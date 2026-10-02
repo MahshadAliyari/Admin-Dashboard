@@ -1,0 +1,914 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#070a14" />
+    <title>پنل مدیریت کاربران</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body id="top">
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <symbol id="i-users" viewBox="0 0 24 24">
+        <circle cx="9" cy="8" r="3.5" />
+        <path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" />
+        <path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.3c2 .7 3.5 2.6 3.5 5.7" />
+      </symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24">
+        <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+      </symbol>
+      <symbol id="i-search" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="6.5" />
+        <path d="m16 16 4.5 4.5" />
+      </symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14" />
+      </symbol>
+      <symbol id="i-edit" viewBox="0 0 24 24">
+        <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" />
+        <path d="m13.5 6.5 4 4" />
+      </symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24">
+        <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+      </symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24">
+        <path d="M12 3 2 20h20L12 3Z" />
+        <path d="M12 10v4M12 17v.5" />
+      </symbol>
+      <symbol id="i-chev-r" viewBox="0 0 24 24">
+        <path d="m9 5 7 7-7 7" />
+      </symbol>
+      <symbol id="i-chev-l" viewBox="0 0 24 24">
+        <path d="m15 5-7 7 7 7" />
+      </symbol>
+      <symbol id="i-filter" viewBox="0 0 24 24">
+        <path d="M4 5h16l-6 8v6l-4-2v-4L4 5Z" />
+      </symbol>
+      <symbol id="i-x" viewBox="0 0 24 24">
+        <path d="M6 6l12 12M18 6 6 18" />
+      </symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24">
+        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+        <circle cx="12" cy="12" r="3" />
+      </symbol>
+      <symbol id="i-up" viewBox="0 0 24 24">
+        <path d="M12 19V5M5 12l7-7 7 7" />
+      </symbol>
+      <symbol id="i-link" viewBox="0 0 24 24">
+        <path
+          d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"
+        />
+      </symbol>
+      <symbol id="i-inbox" viewBox="0 0 24 24">
+        <path d="M3 13l3-8h12l3 8v6H3v-6Z" />
+        <path d="M3 13h5l1 2h6l1-2h5" />
+      </symbol>
+    </svg>
+
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">ص</span>
+          <span class="brand-name">پنل صحنه</span>
+        </div>
+        <nav class="nav" aria-label="منوی اصلی">
+          <a class="nav-link is-active" href="#" aria-current="page"
+            ><svg class="icon"><use href="#i-users" /></svg>کاربران</a
+          >
+          <a class="nav-link" href="#"
+            ><svg class="icon"><use href="#i-chart" /></svg>گزارش‌ها</a
+          >
+        </nav>
+        
+      </aside>
+
+      <main class="main">
+        <header class="page-head">
+          <div>
+            <h1>کاربران</h1>
+            <p class="muted">جستجو، ویرایش و مدیریت فهرست کاربران</p>
+          </div>
+          <button class="btn btn-primary" id="add-user-btn" type="button">
+            <svg class="icon"><use href="#i-plus" /></svg>افزودن کاربر
+          </button>
+        </header>
+
+        <section class="stats" aria-label="آمار کلی">
+          <div class="stat">
+            <span class="stat-label">کل کاربران</span
+            ><strong class="stat-value" id="stat-total">۲۰۸</strong>
+          </div>
+          <div class="stat">
+            <span class="stat-label">میانگین سن</span
+            ><strong class="stat-value" id="stat-age">۳۴٫۸</strong>
+          </div>
+          <div class="stat">
+            <span class="stat-label">شهر پرتکرار</span
+            ><strong class="stat-value" id="stat-city">Tehran</strong>
+          </div>
+          <div class="stat">
+            <span class="stat-label">افزوده‌شده توسط شما</span
+            ><strong class="stat-value" id="stat-local">۳</strong>
+          </div>
+        </section>
+
+        <section class="charts" aria-label="نمودارهای آماری">
+          <article class="card panel">
+            <header class="panel-head">
+              <h2>کاربران به تفکیک شهر</h2>
+              <span class="muted">پنج شهر برتر</span>
+            </header>
+            <ul class="bars" id="chart-cities">
+              <li class="bar-row" style="--v: 92">
+                <span class="bar-label" dir="ltr">Tehran</span
+                ><span class="bar-track"><span class="bar-fill"></span></span
+                ><span class="bar-num">۱۲</span>
+              </li>
+              <li class="bar-row" style="--v: 75">
+                <span class="bar-label" dir="ltr">Tabriz</span
+                ><span class="bar-track"><span class="bar-fill"></span></span
+                ><span class="bar-num">۹</span>
+              </li>
+              <li class="bar-row" style="--v: 58">
+                <span class="bar-label" dir="ltr">Shiraz</span
+                ><span class="bar-track"><span class="bar-fill"></span></span
+                ><span class="bar-num">۷</span>
+              </li>
+              <li class="bar-row" style="--v: 42">
+                <span class="bar-label" dir="ltr">Isfahan</span
+                ><span class="bar-track"><span class="bar-fill"></span></span
+                ><span class="bar-num">۵</span>
+              </li>
+              <li class="bar-row" style="--v: 33">
+                <span class="bar-label" dir="ltr">Ahvaz</span
+                ><span class="bar-track"><span class="bar-fill"></span></span
+                ><span class="bar-num">۴</span>
+              </li>
+            </ul>
+          </article>
+
+          <article class="card panel">
+            <header class="panel-head">
+              <h2>گروه‌های سنی</h2>
+              <span class="muted">تعداد کاربر</span>
+            </header>
+            <div
+              class="cols"
+              id="chart-ages"
+              role="img"
+              aria-label="نمودار ستونی گروه‌های سنی"
+            >
+              <div class="col" style="--v: 38">
+                <span class="col-num">۴۲</span><span class="col-bar"></span
+                ><span class="col-label">۱۸–۲۴</span>
+              </div>
+              <div class="col" style="--v: 100">
+                <span class="col-num">۷۸</span><span class="col-bar"></span
+                ><span class="col-label">۲۵–۳۴</span>
+              </div>
+              <div class="col" style="--v: 72">
+                <span class="col-num">۵۶</span><span class="col-bar"></span
+                ><span class="col-label">۳۵–۴۴</span>
+              </div>
+              <div class="col" style="--v: 40">
+                <span class="col-num">۳۱</span><span class="col-bar"></span
+                ><span class="col-label">۴۵–۵۴</span>
+              </div>
+              <div class="col" style="--v: 14">
+                <span class="col-num">۱۱</span><span class="col-bar"></span
+                ><span class="col-label">۵۵+</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="card panel">
+            <header class="panel-head">
+              <h2>نسبت جنسیت</h2>
+              <span class="muted">از کل کاربران</span>
+            </header>
+            <div class="donut-wrap">
+              <svg
+                class="donut"
+                viewBox="0 0 36 36"
+                role="img"
+                aria-label="نمودار دونات نسبت جنسیت"
+              >
+                <circle class="donut-ring" cx="18" cy="18" r="15.9155" />
+                <circle
+                  class="donut-seg seg-a"
+                  cx="18"
+                  cy="18"
+                  r="15.9155"
+                  stroke-dasharray="52 48"
+                  stroke-dashoffset="25"
+                />
+                <circle
+                  class="donut-seg seg-b"
+                  cx="18"
+                  cy="18"
+                  r="15.9155"
+                  stroke-dasharray="48 52"
+                  stroke-dashoffset="-27"
+                />
+              </svg>
+              <ul class="legend">
+                <li><span class="dot dot-a"></span>مرد<strong>۵۲٪</strong></li>
+                <li><span class="dot dot-b"></span>زن<strong>۴۸٪</strong></li>
+              </ul>
+            </div>
+          </article>
+        </section>
+
+        <section class="admins" aria-labelledby="admins-title">
+          <header class="section-head">
+            <div>
+              <h2 id="admins-title">مدیران سیستم</h2>
+              <p class="muted">تیمی که این پنل را اداره می‌کند</p>
+            </div>
+            <div class="slider-ctrl">
+              <button
+                class="icon-btn ring"
+                type="button"
+                id="slider-prev"
+                aria-label="اسلاید قبلی"
+              >
+                <svg class="icon"><use href="#i-chev-r" /></svg>
+              </button>
+              <button
+                class="icon-btn ring"
+                type="button"
+                id="slider-next"
+                aria-label="اسلاید بعدی"
+              >
+                <svg class="icon"><use href="#i-chev-l" /></svg>
+              </button>
+            </div>
+          </header>
+
+          <div
+            class="slider"
+            id="admin-slider"
+            tabindex="0"
+            aria-label="فهرست مدیران؛ با کشیدن یا کلیدهای جهت‌نما جابه‌جا شوید"
+          >
+            <article class="slide">
+              <div class="photo p1"><span>SA</span></div>
+              <div class="slide-body">
+                <h3 dir="ltr">Sara Ahmadi</h3>
+                <p class="role">مدیر محصول</p>
+                <p class="mail" dir="ltr">sara@gmail.com</p>
+              </div>
+            </article>
+            <article class="slide">
+              <div class="photo p2"><span>RK</span></div>
+              <div class="slide-body">
+                <h3 dir="ltr">Reza Karimi</h3>
+                <p class="role">سرپرست فنی</p>
+                <p class="mail" dir="ltr">reza@gmail.com</p>
+              </div>
+            </article>
+            <article class="slide">
+              <div class="photo p3"><span>NM</span></div>
+              <div class="slide-body">
+                <h3 dir="ltr">Nazanin Moradi</h3>
+                <p class="role">طراح رابط کاربری</p>
+                <p class="mail" dir="ltr">nazanin@gmail.com</p>
+              </div>
+            </article>
+            <article class="slide">
+              <div class="photo p4"><span>AH</span></div>
+              <div class="slide-body">
+                <h3 dir="ltr">Ali Hosseini</h3>
+                <p class="role">مدیر پشتیبانی</p>
+                <p class="mail" dir="ltr">ali@gmail.com</p>
+              </div>
+            </article>
+            <article class="slide">
+              <div class="photo p5"><span>MT</span></div>
+              <div class="slide-body">
+                <h3 dir="ltr">Maryam Tahmasebi</h3>
+                <p class="role">تحلیلگر داده</p>
+                <p class="mail" dir="ltr">maryam@gmail.com</p>
+              </div>
+            </article>
+          </div>
+          <div class="dots" id="slider-dots" aria-hidden="true">
+            <span class="dot-i is-on"></span><span class="dot-i"></span
+            ><span class="dot-i"></span><span class="dot-i"></span
+            ><span class="dot-i"></span>
+          </div>
+        </section>
+
+        <section class="card" aria-label="جدول کاربران">
+          <div class="tabs" role="tablist" aria-label="دسته‌بندی کاربران">
+            <button
+              class="tab"
+              role="tab"
+              id="tab-all"
+              type="button"
+              aria-selected="true"
+              aria-controls="users-panel"
+              data-tab="all"
+            >
+              همه<span class="tab-count">۲۰۸</span>
+            </button>
+            <button
+              class="tab"
+              role="tab"
+              id="tab-server"
+              type="button"
+              aria-selected="false"
+              aria-controls="users-panel"
+              tabindex="-1"
+              data-tab="server"
+            >
+              سرور<span class="tab-count">۲۰۵</span>
+            </button>
+            <button
+              class="tab"
+              role="tab"
+              id="tab-local"
+              type="button"
+              aria-selected="false"
+              aria-controls="users-panel"
+              tabindex="-1"
+              data-tab="local"
+            >
+              افزوده‌شده من<span class="tab-count">۳</span>
+            </button>
+            <button
+              class="tab"
+              role="tab"
+              id="tab-deleted"
+              type="button"
+              aria-selected="false"
+              aria-controls="users-panel"
+              tabindex="-1"
+              data-tab="deleted"
+            >
+              حذف‌شده<span class="tab-count">۲</span>
+            </button>
+          </div>
+
+          <div id="users-panel" role="tabpanel" aria-labelledby="tab-all">
+            <form class="toolbar" id="search-form" novalidate>
+              <div class="field grow">
+                <label class="sr-only" for="search-input"
+                  >جستجوی نام یا ایمیل</label
+                >
+                <div class="input-wrap">
+                  <svg class="icon input-icon" aria-hidden="true">
+                    <use href="#i-search" />
+                  </svg>
+                  <input
+                    class="input"
+                    id="search-input"
+                    name="q"
+                    type="text"
+                    placeholder="نام یا ایمیل را بنویسید"
+                    autocomplete="off"
+                  />
+                </div>
+                <p
+                  class="field-error"
+                  id="search-error"
+                  role="alert"
+                  hidden
+                ></p>
+              </div>
+              <div class="toolbar-actions">
+                <button
+                  class="btn btn-filter"
+                  type="button"
+                  id="open-filter"
+                  aria-haspopup="dialog"
+                >
+                  <svg class="icon" aria-hidden="true">
+                    <use href="#i-filter" /></svg
+                  >فیلترها
+                  <span class="count-badge" id="filter-count">۲</span>
+                </button>
+                <button class="btn btn-primary" type="submit">جستجو</button>
+              </div>
+            </form>
+
+            <div class="recent" id="recent-searches" aria-label="جستجوهای اخیر">
+              <span class="muted">جستجوهای اخیر</span>
+              <button class="chip" type="button">Sara</button>
+              <button class="chip" type="button">Ali</button>
+            </div>
+
+            <div
+              class="active-filters"
+              id="active-filters"
+              aria-label="فیلترهای فعال"
+            >
+              <span class="muted">فیلترهای فعال</span>
+              <button class="chip chip-x" type="button" data-remove="gender">
+                جنسیت: مرد<svg class="icon" aria-hidden="true">
+                  <use href="#i-x" />
+                </svg>
+              </button>
+              <button class="chip chip-x" type="button" data-remove="age">
+                سن: ۲۰ تا ۳۰<svg class="icon" aria-hidden="true">
+                  <use href="#i-x" />
+                </svg>
+              </button>
+              <button class="chip-clear" type="button" id="clear-filters">
+                پاک‌کردن همه
+              </button>
+            </div>
+
+            <div class="state" id="state-loading" hidden>
+              <span class="spinner" aria-hidden="true"></span>
+              <p>در حال دریافت کاربران…</p>
+            </div>
+
+            <div class="state state-error" id="state-error" hidden>
+              <svg class="icon icon-lg" aria-hidden="true">
+                <use href="#i-alert" />
+              </svg>
+              <p id="state-error-text">
+                دریافت اطلاعات ناموفق بود. اتصال اینترنت را بررسی کنید.
+              </p>
+              <button class="btn" id="retry-btn" type="button">
+                تلاش دوباره
+              </button>
+            </div>
+
+            <div class="state" id="state-empty" hidden>
+              <svg class="icon icon-lg" aria-hidden="true">
+                <use href="#i-inbox" />
+              </svg>
+              <p>کاربری با این مشخصات پیدا نشد. عبارت دیگری را امتحان کنید.</p>
+            </div>
+
+            <div class="table-wrap" id="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th scope="col">کاربر</th>
+                    <th scope="col">
+                      <button class="sort-btn" type="button" data-sort="age">
+                        سن
+                      </button>
+                    </th>
+                    <th scope="col">شهر</th>
+                    <th scope="col">وضعیت</th>
+                    <th scope="col"><span class="sr-only">عملیات</span></th>
+                  </tr>
+                </thead>
+                <tbody id="users-body">
+                  <!-- موقت: این سه ردیف فقط برای دیدن ظاهر است و بعداً با JavaScript ساخته می‌شود -->
+                  <tr data-id="1">
+                    <td data-label="کاربر">
+                      <div class="user">
+                        <span class="avatar a1" aria-hidden="true">EA</span>
+                        <div>
+                          <div class="user-name" dir="ltr">Elnaz Ahmadi</div>
+                          <div class="user-mail" dir="ltr">
+                            ahmadi@gmail.com
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td data-label="سن">۲۲</td>
+                    <td dir="ltr" data-label="شهر">Tehran</td>
+                    <td data-label="وضعیت">
+                      <span class="badge badge-ok">سرور</span>
+                    </td>
+                    <td class="actions">
+                      <button
+                        class="icon-btn"
+                        type="button"
+                        data-action="view"
+                        aria-label="مشاهده جزئیات"
+                      >
+                        <svg class="icon"><use href="#i-eye" /></svg>
+                      </button>
+                      <button
+                        class="icon-btn"
+                        type="button"
+                        data-action="edit"
+                        aria-label="ویرایش"
+                      >
+                        <svg class="icon"><use href="#i-edit" /></svg>
+                      </button>
+                      <button
+                        class="icon-btn danger"
+                        type="button"
+                        data-action="delete"
+                        aria-label="حذف"
+                      >
+                        <svg class="icon"><use href="#i-trash" /></svg>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr data-id="2">
+                    <td data-label="کاربر">
+                      <div class="user">
+                        <span class="avatar a2" aria-hidden="true">AM</span>
+                        <div>
+                          <div class="user-name" dir="ltr">Ali Moradi</div>
+                          <div class="user-mail" dir="ltr">Ali@gmail.com</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td data-label="سن">۴۳</td>
+                    <td dir="ltr" data-label="شهر">Tehran</td>
+                    <td data-label="وضعیت">
+                      <span class="badge badge-ok">سرور</span>
+                    </td>
+                    <td class="actions">
+                      <button
+                        class="icon-btn"
+                        type="button"
+                        data-action="view"
+                        aria-label="مشاهده جزئیات"
+                      >
+                        <svg class="icon"><use href="#i-eye" /></svg>
+                      </button>
+                      <button
+                        class="icon-btn"
+                        type="button"
+                        data-action="edit"
+                        aria-label="ویرایش"
+                      >
+                        <svg class="icon"><use href="#i-edit" /></svg>
+                      </button>
+                      <button
+                        class="icon-btn danger"
+                        type="button"
+                        data-action="delete"
+                        aria-label="حذف"
+                      >
+                        <svg class="icon"><use href="#i-trash" /></svg>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr data-id="local-1">
+                    <td data-label="کاربر">
+                      <div class="user">
+                        <span class="avatar a3" aria-hidden="true">SA</span>
+                        <div>
+                          <div class="user-name" dir="ltr">Sara Ahmadi</div>
+                          <div class="user-mail" dir="ltr">sara@gmail.com</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td data-label="سن">۲۵</td>
+                    <td dir="ltr" data-label="شهر">Tabriz</td>
+                    <td data-label="وضعیت">
+                      <span class="badge badge-local">محلی</span>
+                    </td>
+                    <td class="actions">
+                      <button
+                        class="icon-btn"
+                        type="button"
+                        data-action="view"
+                        aria-label="مشاهده جزئیات"
+                      >
+                        <svg class="icon"><use href="#i-eye" /></svg>
+                      </button>
+                      <button
+                        class="icon-btn"
+                        type="button"
+                        data-action="edit"
+                        aria-label="ویرایش"
+                      >
+                        <svg class="icon"><use href="#i-edit" /></svg>
+                      </button>
+                      <button
+                        class="icon-btn danger"
+                        type="button"
+                        data-action="delete"
+                        aria-label="حذف"
+                      >
+                        <svg class="icon"><use href="#i-trash" /></svg>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <footer class="pager">
+              <span class="muted" id="pager-info">نمایش ۱ تا ۱۰ از ۲۰۸</span>
+              <div class="pager-btns" id="pager-btns">
+                <button class="btn btn-sm" type="button">قبلی</button>
+                <button
+                  class="btn btn-sm is-current"
+                  type="button"
+                  aria-current="page"
+                >
+                  ۱
+                </button>
+                <button class="btn btn-sm" type="button">۲</button>
+                <button class="btn btn-sm" type="button">بعدی</button>
+              </div>
+            </footer>
+          </div>
+        </section>
+
+        <footer class="site-footer">
+          <div class="footer-top">
+            <div class="footer-brand">
+              <div class="brand">
+                <span class="brand-mark" aria-hidden="true">ص</span>
+                <span class="brand-name brand-name-always">پنل صحنه</span>
+              </div>
+              <p class="footer-text"></p>
+              <p class="status-line">
+                <span class="status-dot" aria-hidden="true"></span>اتصال به
+                DummyJSON برقرار است
+              </p>
+            </div>
+
+            <nav class="footer-cols" aria-label="پیوندهای پایین صفحه">
+              <div class="footer-col">
+                <h2>پنل</h2>
+                <ul>
+                  <li><a href="#">کاربران</a></li>
+                  <li><a href="#">گزارش‌ها</a></li>
+                  <li><a href="#">مدیران سیستم</a></li>
+                </ul>
+              </div>
+              <div class="footer-col">
+                <h2>منابع</h2>
+                <ul>
+                  <li>
+                    <a
+                      href="https://dummyjson.com/docs/users"
+                      target="_blank"
+                      rel="noopener"
+                      >مستندات API<svg class="icon" aria-hidden="true">
+                        <use href="#i-link" /></svg
+                    ></a>
+                  </li>
+                  <li>
+                    <a href="#" target="_blank" rel="noopener"
+                      >کد در GitHub<svg class="icon" aria-hidden="true">
+                        <use href="#i-link" /></svg
+                    ></a>
+                  </li>
+                  <li><a href="#">راهنمای README</a></li>
+                </ul>
+              </div>
+              <div class="footer-col">
+                <h2>ساخته‌شده با</h2>
+                <ul class="tech">
+                  <li>HTML</li>
+                  <li>CSS</li>
+                  <li>JavaScript</li>
+                  <li>Fetch API</li>
+                  <li>LocalStorage</li>
+                </ul>
+              </div>
+            </nav>
+          </div>
+
+          <div class="footer-bottom">
+            <p class="muted">© ۱۴۰۵ · هلدینگ صحنه</p>
+            <a class="to-top" href="#top"
+              ><svg class="icon" aria-hidden="true"><use href="#i-up" /></svg
+              >بازگشت به بالا</a
+            >
+          </div>
+        </footer>
+      </main>
+    </div>
+
+    <dialog class="modal" id="user-dialog" aria-labelledby="dialog-title">
+      <form id="user-form" novalidate>
+        <h2 id="dialog-title">افزودن کاربر</h2>
+        <div class="form-grid">
+          <div class="field">
+            <label for="f-first">نام</label>
+            <input
+              class="input"
+              id="f-first"
+              name="firstName"
+              type="text"
+              autocomplete="off"
+            />
+            <p class="field-error" role="alert" hidden></p>
+          </div>
+          <div class="field">
+            <label for="f-last">نام خانوادگی</label>
+            <input
+              class="input"
+              id="f-last"
+              name="lastName"
+              type="text"
+              autocomplete="off"
+            />
+            <p class="field-error" role="alert" hidden></p>
+          </div>
+          <div class="field span-2">
+            <label for="f-email">ایمیل</label>
+            <input
+              class="input"
+              id="f-email"
+              name="email"
+              type="email"
+              dir="ltr"
+              autocomplete="off"
+            />
+            <p class="field-error" role="alert" hidden></p>
+          </div>
+          <div class="field">
+            <label for="f-age">سن</label>
+            <input
+              class="input"
+              id="f-age"
+              name="age"
+              type="number"
+              inputmode="numeric"
+            />
+            <p class="field-error" role="alert" hidden></p>
+          </div>
+          <div class="field">
+            <label for="f-city">شهر</label>
+            <input
+              class="input"
+              id="f-city"
+              name="city"
+              type="text"
+              autocomplete="off"
+            />
+            <p class="field-error" role="alert" hidden></p>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" type="button" id="dialog-cancel">انصراف</button>
+          <button class="btn btn-primary" type="submit">ذخیره</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="filter-dialog" aria-labelledby="filter-title">
+      <form id="filter-form" novalidate>
+        <h2 id="filter-title">فیلتر کاربران</h2>
+
+        <fieldset class="fieldset">
+          <legend>جنسیت</legend>
+          <div class="seg">
+            <label class="seg-opt"
+              ><input type="radio" name="gender" value="" /><span
+                >همه</span
+              ></label
+            >
+            <label class="seg-opt"
+              ><input type="radio" name="gender" value="male" checked /><span
+                >مرد</span
+              ></label
+            >
+            <label class="seg-opt"
+              ><input type="radio" name="gender" value="female" /><span
+                >زن</span
+              ></label
+            >
+          </div>
+        </fieldset>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="flt-age-min">حداقل سن</label>
+            <input
+              class="input"
+              id="flt-age-min"
+              name="ageMin"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              value="20"
+            />
+          </div>
+          <div class="field">
+            <label for="flt-age-max">حداکثر سن</label>
+            <input
+              class="input"
+              id="flt-age-max"
+              name="ageMax"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              value="30"
+            />
+          </div>
+          <p
+            class="field-error span-2"
+            id="flt-age-error"
+            role="alert"
+            hidden
+          ></p>
+          <div class="field span-2">
+            <label for="flt-city">شهر</label>
+            <select class="input" id="flt-city" name="city">
+              <option value="">همه شهرها</option>
+              <option>Tehran</option>
+              <option>Shiraz</option>
+              <option>Tabriz</option>
+            </select>
+          </div>
+          <div class="field span-2">
+            <label for="flt-sort">مرتب‌سازی</label>
+            <select class="input" id="flt-sort" name="sort">
+              <option value="">پیش‌فرض</option>
+              <option value="age-asc">سن: کم به زیاد</option>
+              <option value="age-desc">سن: زیاد به کم</option>
+              <option value="name-asc">نام: الفبایی</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-primary" type="submit">اعمال فیلتر</button>
+          <button class="btn btn-ghost" type="button" id="filter-reset">
+            پاک‌کردن همه
+          </button>
+          <button class="btn btn-ghost" type="button" id="filter-cancel">
+            انصراف
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="detail-dialog" aria-labelledby="detail-title">
+      <div class="detail-head">
+        <span class="avatar avatar-lg a1" aria-hidden="true">EJ</span>
+        <div class="detail-title">
+          <h2 id="detail-title" dir="ltr">Maryam Salimi</h2>
+          <span class="badge badge-ok">سرور</span>
+        </div>
+        <button
+          class="icon-btn"
+          type="button"
+          id="detail-close"
+          aria-label="بستن"
+        >
+          <svg class="icon"><use href="#i-x" /></svg>
+        </button>
+      </div>
+      <dl class="detail-list">
+        <div>
+          <dt>ایمیل</dt>
+          <dd dir="ltr">maryam@gmail.com</dd>
+        </div>
+        <div>
+          <dt>تلفن</dt>
+          <dd dir="ltr">+98 965-431-3024</dd>
+        </div>
+        <div>
+          <dt>سن</dt>
+          <dd>۲۸</dd>
+        </div>
+        <div>
+          <dt>جنسیت</dt>
+          <dd>زن</dd>
+        </div>
+        <div>
+          <dt>شهر</dt>
+          <dd dir="ltr">Tehran</dd>
+        </div>
+        <div>
+          <dt>شناسه</dt>
+          <dd>۱</dd>
+        </div>
+      </dl>
+      <div class="modal-actions">
+        <button class="btn btn-primary" type="button" id="detail-edit">
+          ویرایش کاربر
+        </button>
+        <button class="btn btn-ghost" type="button" id="detail-close-2">
+          بستن
+        </button>
+      </div>
+    </dialog>
+
+    <dialog
+      class="modal modal-sm"
+      id="confirm-dialog"
+      aria-labelledby="confirm-title"
+    >
+      <h2 id="confirm-title">حذف کاربر</h2>
+      <p class="muted" id="confirm-text">
+        این کاربر از فهرست حذف می‌شود. ادامه می‌دهید؟
+      </p>
+      <div class="modal-actions">
+        <button class="btn" type="button" id="confirm-cancel">انصراف</button>
+        <button class="btn btn-danger" type="button" id="confirm-ok">
+          حذف
+        </button>
+      </div>
+    </dialog>
+
+    <script type="module" src="js/script.js"></script>
+  </body>
+</html>
