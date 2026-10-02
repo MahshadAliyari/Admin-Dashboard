@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#070a14" />
+
     <title>پنل مدیریت کاربران</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -85,7 +85,6 @@
             ><svg class="icon"><use href="#i-chart" /></svg>گزارش‌ها</a
           >
         </nav>
-        
       </aside>
 
       <main class="main">
@@ -357,7 +356,7 @@
           </div>
 
           <div id="users-panel" role="tabpanel" aria-labelledby="tab-all">
-            <form class="toolbar" id="search-form" novalidate>
+            <form class="toolbar" id="search-form">
               <div class="field grow">
                 <label class="sr-only" for="search-input"
                   >جستجوی نام یا ایمیل</label
@@ -369,7 +368,7 @@
                   <input
                     class="input"
                     id="search-input"
-                    name="q"
+                    name="search-input"
                     type="text"
                     placeholder="نام یا ایمیل را بنویسید"
                     autocomplete="off"
