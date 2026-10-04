@@ -1,4 +1,5 @@
 import { getUsers } from "./api.js";
+import { renderTable } from "./ui.js";
 
 const users = await getUsers();
-console.log(users[0]);
+renderTable(users.slice(0, 10));
