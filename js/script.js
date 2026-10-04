@@ -1,12 +1,4 @@
-const BASE_URL = "https://dummyjson.com";
+import { getUsers } from "./api.js";
 
-export async function getUsers() {
-    const res = await fetch(`${BASE_URL}/users?limit=0`);
-
-    if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-    }
-    const data = await res.json();
-    return data.users;
-    
-}
+const users = await getUsers();
+console.log(users[0]);
