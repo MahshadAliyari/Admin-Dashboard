@@ -1,457 +1,402 @@
-import { GENDER_LABLES, fullName, initials, toFa, toPercent } from "./listu.js";
+const usersBody = document.querySelector("#users-body");
+const tableWrap = document.querySelector("#table-wrap");
 
-const SVG_NS = "http://www.w3.org/2000/svg";
-const AVATAR_CLASSES = ["a1", "a2", "a3"];
-const ROLE_LABELS = { admin: "مدیر سیستم", moderator: "ناظر", user: "کاربر" };
+const stateLoading = document.querySelector("#state-loading");
+const stateError = document.querySelector("#state-error");
+const stateEmpty = document.querySelector("#state-empty");
+const stateErrorText = document.querySelector("#state-error-text");
 
-const $ = (selector, root = document) => root.querySelector(selector);
+const statTotal = document.querySelector("#stat-total");
+const statAge = document.querySelector("#stat-age");
+const statCity = document.querySelector("#stat-city");
+const statLocal = document.querySelector("#stat-local");
 
-// ---------- ساختن المان‌ها ----------
+const chartCities = document.querySelector("#chart-cities");
+const chartAges = document.querySelector("#chart-ages");
+const segA = document.querySelector(".seg-a");
+const segB = document.querySelector(".seg-b");
+const legendValues = document.querySelectorAll(".legend strong");
 
-function el(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
+const pagerInfo = document.querySelector("#pager-info");
+const filterCount = document.querySelector("#filter-count");
+const activeFilters = document.querySelector("#active-filters");
+const recentSearches = document.querySelector("#recent-searches");
+const cityFilter = document.querySelector("#flt-city");
+
+/* -----------------------------
+   ابزارها
+----------------------------- */
+
+/* تبدیل عدد انگلیسی به فارسی */
+export function toFa(value) {
+  return String(value).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[digit]);
 }
 
-function icon(name) {
-  const svg = document.createElementNS(SVG_NS, "svg");
-  svg.setAttribute("class", "icon");
-  svg.setAttribute("aria-hidden", "true");
-  const use = document.createElementNS(SVG_NS, "use");
-  use.setAttribute("href", `#i-${name}`);
-  svg.append(use);
-  return svg;
+/* جلوگیری از XSS */
+export function escapeHtml(value) {
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    (char) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[char],
+  );
 }
 
-function avatarClass(user) {
-  const sum = [...String(user.id)].reduce((s, ch) => s + ch.charCodeAt(0), 0);
-  return AVATAR_CLASSES[sum % AVATAR_CLASSES.length];
+export function fullName(user) {
+  return `${user.firstName} ${user.lastName}`;
 }
 
-// -------- حالت‌های Loading / Error / Empty / Table ----------
+export function initials(user) {
+  const first = user.firstName?.[0] ?? "";
+  const last = user.lastName?.[0] ?? "";
 
-function setView(view) {
-  $("#state-loading").hidden = view !== "loading";
-  $("#state-error").hidden = view !== "error";
-  $("#state-empty").hidden = view !== "empty";
-  $("#table-wrap").hidden = view !== "table";
-  $(".pager").hidden = view !== "table";
+  return `${first}${last}`.toUpperCase();
 }
+
+/* -----------------------------
+   حالت‌ها (Loading / Error / Empty)
+----------------------------- */
 
 export function showLoading() {
-  setView("loading");
-}
-export function hideLoading() {
-  $("state-loading").hidden = true;
-}
-export function showEmpty() {
-  setView("empty");
-}
-export function showTable() {
-  setView("table");
+  stateLoading.hidden = false;
+  stateError.hidden = true;
+  stateEmpty.hidden = true;
+  tableWrap.hidden = true;
 }
 
 export function showError(message) {
-  $("#state-error-text").textContent = message;
-  setView("error");
+  stateLoading.hidden = true;
+  stateEmpty.hidden = true;
+  tableWrap.hidden = true;
+
+  stateErrorText.textContent = message;
+  stateError.hidden = false;
 }
 
-// --------- جدول ----------
-
-function createCell(label, content, dir) {
-  const td = el("td");
-  td.dataset.label = label;
-  if (dir) td.dir = dir;
-  td.append(content);
-  return td;
+export function showEmpty() {
+  stateLoading.hidden = true;
+  stateError.hidden = true;
+  stateEmpty.hidden = false;
+  tableWrap.hidden = true;
 }
 
-function createUserCell(user) {
-  const name = el("div", "user-name", fullName(user));
-  const mail = el("div", "user-mail", user.email);
-  name.dir = "ltr";
-  mail.dir = "ltr";
-  const avatar = el("span", `avatar ${avatarClass(user)}`, initials(user));
-  avatar.setAttribute("aria-hidden", "true");
-  const info = el("div");
-  info.append(name, mail);
-  const wrap = el("div", "user");
-  wrap.append(avatar, info);
-  return createCell("کاربر", wrap);
+export function hideStates() {
+  stateLoading.hidden = true;
+  stateError.hidden = true;
+  stateEmpty.hidden = true;
+  tableWrap.hidden = false;
 }
 
-function createBadge(user) {
-  const isLocal = user.source === "local";
-  return el(
-    "span",
-    isLocal ? "badge badge-local" : "badge badge-ok",
-    isLocal ? "محلی" : "سرور",
-  );
+/* -----------------------------
+   جدول کاربران
+----------------------------- */
+
+function actionButton(action, id, label, icon, extraClass = "") {
+  return `
+    <button class="icon-btn ${extraClass}" type="button"
+      data-action="${action}" data-id="${escapeHtml(id)}"
+      aria-label="${label}">
+      <svg class="icon" aria-hidden="true"><use href="#${icon}"></use></svg>
+    </button>`;
 }
 
-function createIconButton(action, label, iconName, extraClass = "") {
-  const btn = el("button", `icon-btn ${extraClass}`.trim());
-  btn.type = "button";
-  btn.dataset.action = action;
-  btn.setAttribute("aria-label", label);
-  btn.append(icon(iconName));
-  return btn;
+/* mode: "all" | "server" | "local" | "deleted" */
+export function renderUsers(users, mode = "all") {
+  usersBody.innerHTML = "";
+
+  users.forEach((user, index) => {
+    const row = document.createElement("tr");
+    row.dataset.id = user.id;
+
+    const avatarClass = `a${(index % 3) + 1}`;
+
+    const badge = user.local
+      ? '<span class="badge badge-local">محلی</span>'
+      : '<span class="badge badge-ok">سرور</span>';
+
+    const actions =
+      mode === "deleted"
+        ? actionButton("restore", user.id, "بازگردانی", "i-up")
+        : actionButton("view", user.id, "مشاهده جزئیات", "i-eye") +
+          actionButton("edit", user.id, "ویرایش", "i-edit") +
+          actionButton("delete", user.id, "حذف", "i-trash", "danger");
+
+    row.innerHTML = `
+      <td data-label="کاربر">
+        <div class="user">
+          <span class="avatar ${avatarClass}" aria-hidden="true">${escapeHtml(initials(user))}</span>
+          <div>
+            <div class="user-name" dir="ltr">${escapeHtml(fullName(user))}</div>
+            <div class="user-mail" dir="ltr">${escapeHtml(user.email)}</div>
+          </div>
+        </div>
+      </td>
+      <td data-label="سن">${toFa(user.age)}</td>
+      <td dir="ltr" data-label="شهر">${escapeHtml(user.address?.city ?? "نامشخص")}</td>
+      <td data-label="وضعیت">${badge}</td>
+      <td class="actions">${actions}</td>
+    `;
+
+    usersBody.append(row);
+  });
 }
 
-function createActionsCell(user, isDeleted) {
-  const td = el("td", "actions");
-  const name = fullName(user);
-  td.append(createIconButton("view", `جزئیات ${name}`, "eye"));
-  if (isDeleted) {
-    const restore = el("button", "btn btn-sm", "بازیابی");
-    restore.type = "button";
-    restore.dataset.action = "restore";
-    td.append(restore);
-  } else {
-    td.append(
-      createIconButton("edit", `ویرایش ${name}`, "edit"),
-      createIconButton("delete", `حذف ${name}`, "trash", "danger"),
-    );
+/* -----------------------------
+   آمار و نمودارها (از داده واقعی)
+----------------------------- */
+
+export function renderStats(users) {
+  statLocal.textContent = toFa(users.filter((user) => user.local).length);
+
+  if (!users.length) {
+    statTotal.textContent = "۰";
+    statAge.textContent = "۰";
+    statCity.textContent = "-";
+    return;
   }
-  return td;
+
+  const total = users.length;
+  const averageAge = users.reduce((sum, user) => sum + user.age, 0) / total;
+
+  statTotal.textContent = toFa(total);
+  statAge.textContent = toFa(averageAge.toFixed(1)).replace(".", "٫");
+  statCity.textContent = topCities(users, 1)[0]?.[0] ?? "-";
 }
 
-function createRow(user, isDeleted) {
-  const tr = el("tr");
-  tr.dataset.id = user.id;
-  tr.append(
-    createUserCell(user),
-    createCell("سن", toFa(user.age)),
-    createCell("شهر", user.city || "—", "ltr"),
-    createCell("وضعیت", createBadge(user)),
-    createActionsCell(user, isDeleted),
-  );
-  return tr;
-}
+function topCities(users, limit) {
+  const counts = {};
 
-export function renderTable(users, isDeleted) {
-  $("#users-body").replaceChildren(
-    ...users.map((u) => createRow(u, isDeleted)),
-  );
-}
-
-// ---------- صفحه‌بندی ----------
-
-function pageButton(label, page, disabled, current = false) {
-  const btn = el(
-    "button",
-    current ? "btn btn-sm is-current" : "btn btn-sm",
-    label,
-  );
-  btn.type = "button";
-  btn.dataset.page = page;
-  btn.disabled = disabled;
-  if (current) btn.setAttribute("aria-current", "page");
-  return btn;
-}
-
-function visiblePages(page, totalPages) {
-  const start = Math.max(1, Math.min(page - 2, totalPages - 4));
-  const end = Math.min(totalPages, start + 4);
-  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
-}
-
-export function renderPager({ page, totalPages, from, to, total }) {
-  $("#pager-info").textContent =
-    `نمایش ${toFa(from)} تا ${toFa(to)} از ${toFa(total)}`;
-  $("#pager-btns").replaceChildren(
-    pageButton("قبلی", page - 1, page === 1),
-    ...visiblePages(page, totalPages).map((n) =>
-      pageButton(toFa(n), n, false, n === page),
-    ),
-    pageButton("بعدی", page + 1, page === totalPages),
-  );
-}
-
-// ---------- آمار و نمودارها ----------
-
-export function renderStats(stats) {
-  $("#stat-total").textContent = toFa(stats.total);
-  $("#stat-age").textContent = toFa(Number(stats.avgAge.toFixed(1)));
-  $("#stat-city").textContent = stats.topCity;
-  $("#stat-local").textContent = toFa(stats.localCount);
-}
-
-export function renderCityChart(items) {
-  const max = Math.max(...items.map((i) => i.count), 1);
-  const rows = items.map(({ city, count }) => {
-    const li = el("li", "bar-row");
-    li.style.setProperty("--v", toPercent(count, max));
-    const label = el("span", "bar-label", city);
-    label.dir = "ltr";
-    const track = el("span", "bar-track");
-    track.append(el("span", "bar-fill"));
-    li.append(label, track, el("span", "bar-num", toFa(count)));
-    return li;
+  users.forEach((user) => {
+    const city = user.address?.city ?? "نامشخص";
+    counts[city] = (counts[city] ?? 0) + 1;
   });
-  $("#chart-cities").replaceChildren(...rows);
+
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit);
 }
 
-export function renderAgeChart(groups) {
-  const max = Math.max(...groups.map((g) => g.count), 1);
-  const cols = groups.map(({ label, count }) => {
-    const col = el("div", "col");
-    col.style.setProperty("--v", toPercent(count, max));
-    col.append(
-      el("span", "col-num", toFa(count)),
-      el("span", "col-bar"),
-      el("span", "col-label", label),
-    );
-    return col;
+export function renderCharts(users) {
+  /* شهرها */
+  const cities = topCities(users, 5);
+  const maxCity = Math.max(...cities.map(([, n]) => n), 1);
+
+  chartCities.innerHTML = cities
+    .map(
+      ([city, count]) => `
+      <li class="bar-row" style="--v: ${Math.round((count / maxCity) * 100)}">
+        <span class="bar-label" dir="ltr">${escapeHtml(city)}</span>
+        <span class="bar-track"><span class="bar-fill"></span></span>
+        <span class="bar-num">${toFa(count)}</span>
+      </li>`,
+    )
+    .join("");
+
+  /* گروه‌های سنی */
+  const groups = [
+    { label: "۱۸–۲۴", test: (age) => age <= 24 },
+    { label: "۲۵–۳۴", test: (age) => age >= 25 && age <= 34 },
+    { label: "۳۵–۴۴", test: (age) => age >= 35 && age <= 44 },
+    { label: "۴۵–۵۴", test: (age) => age >= 45 && age <= 54 },
+    { label: "۵۵+", test: (age) => age >= 55 },
+  ].map((group) => ({
+    ...group,
+    count: users.filter((user) => group.test(user.age)).length,
+  }));
+
+  const maxGroup = Math.max(...groups.map((group) => group.count), 1);
+
+  chartAges.innerHTML = groups
+    .map(
+      (group) => `
+      <div class="col" style="--v: ${Math.round((group.count / maxGroup) * 100)}">
+        <span class="col-num">${toFa(group.count)}</span>
+        <span class="col-bar"></span>
+        <span class="col-label">${group.label}</span>
+      </div>`,
+    )
+    .join("");
+
+  /* جنسیت */
+  const total = users.length;
+  const male = total
+    ? Math.round(
+        (users.filter((user) => user.gender === "male").length / total) * 100,
+      )
+    : 0;
+  const female = total ? 100 - male : 0;
+
+  segA.setAttribute("stroke-dasharray", `${male} ${100 - male}`);
+  segA.setAttribute("stroke-dashoffset", "25");
+  segB.setAttribute("stroke-dasharray", `${female} ${100 - female}`);
+  segB.setAttribute("stroke-dashoffset", String(25 - male));
+
+  legendValues[0].textContent = `${toFa(male)}٪`;
+  legendValues[1].textContent = `${toFa(female)}٪`;
+}
+
+/* شمارنده روی تب‌ها */
+export function renderTabCounts(counts) {
+  Object.entries(counts).forEach(([tab, value]) => {
+    const element = document.querySelector(`[data-tab="${tab}"] .tab-count`);
+
+    if (element) {
+      element.textContent = toFa(value);
+    }
   });
-  $("#chart-ages").replaceChildren(...cols);
 }
 
-export function renderGenderChart({ male, female }) {
-  const maleRing = $(".seg-a");
-  const femaleRing = $(".seg-b");
-  maleRing.setAttribute("stroke-dasharray", `${male} ${100 - male}`);
-  maleRing.setAttribute("stroke-dashoffset", 25);
-  femaleRing.setAttribute("stroke-dasharray", `${female} ${100 - female}`);
-  femaleRing.setAttribute("stroke-dashoffset", 25 - male);
-  const [maleText, femaleText] = document.querySelectorAll(".legend strong");
-  maleText.textContent = `${toFa(male)}٪`;
-  femaleText.textContent = `${toFa(female)}٪`;
-}
+/* گزینه‌های شهر در فیلتر از روی داده واقعی */
+export function renderCityOptions(cities) {
+  const current = cityFilter.value;
 
-// ---------- اسلایدر مدیران ----------
+  cityFilter.innerHTML = '<option value="">همه شهرها</option>';
 
-function createSlide(user, index) {
-  const photo = el("div", `photo p${(index % 5) + 1}`);
-  photo.append(el("span", "", initials(user)));
-  if (user.image) {
-    const img = el("img");
-    img.src = user.image;
-    img.alt = fullName(user);
-    img.loading = "lazy";
-    img.addEventListener("error", () => img.remove()); // اگر عکس نیامد، حروف اول می‌ماند
-    photo.append(img);
-  }
-  const name = el("h3", "", fullName(user));
-  name.dir = "ltr";
-  const mail = el("p", "mail", user.email);
-  mail.dir = "ltr";
-  const role = ROLE_LABELS[user.role] ?? ROLE_LABELS.user;
-  const body = el("div", "slide-body");
-  body.append(
-    name,
-    el("p", "role", user.jobTitle ? `${role} · ${user.jobTitle}` : role),
-    mail,
-  );
-  const slide = el("article", "slide");
-  slide.append(photo, body);
-  return slide;
-}
+  cities.forEach((city) => {
+    const option = document.createElement("option");
 
-export function renderSlider(admins) {
-  $("#admin-slider").replaceChildren(...admins.map(createSlide));
-  const dots = admins.map((_, i) =>
-    el("span", i === 0 ? "dot-i is-on" : "dot-i"),
-  );
-  $("#slider-dots").replaceChildren(...dots);
-}
+    option.value = city;
+    option.textContent = city;
 
-// ---------- تب‌ها، چیپ‌ها، فیلترهای فعال ----------
-
-export function renderTabs(counts, activeTab) {
-  document.querySelectorAll(".tab").forEach((tab) => {
-    const name = tab.dataset.tab;
-    const selected = name === activeTab;
-    tab.setAttribute("aria-selected", String(selected));
-    tab.tabIndex = selected ? 0 : -1;
-    $(".tab-count", tab).textContent = toFa(counts[name]);
+    cityFilter.append(option);
   });
-  $("#users-panel").setAttribute("aria-labelledby", `tab-${activeTab}`);
+
+  cityFilter.value = current;
 }
 
-export function renderRecent(items) {
-  const box = $("#recent-searches");
-  box.hidden = items.length === 0;
-  const chips = items.map((text) => {
-    const chip = el("button", "chip", text);
-    chip.type = "button";
-    return chip;
-  });
-  box.replaceChildren(el("span", "muted", "جستجوهای اخیر"), ...chips);
+/* -----------------------------
+   صفحه‌بندی
+----------------------------- */
+
+export function renderPager(total, currentPage, pageSize) {
+  const start = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const end = Math.min(currentPage * pageSize, total);
+
+  pagerInfo.textContent = `نمایش ${toFa(start)} تا ${toFa(end)} از ${toFa(total)}`;
 }
 
-export function renderActiveFilters(chips) {
-  const box = $("#active-filters");
-  box.hidden = chips.length === 0;
-  const nodes = chips.map(({ key, label }) => {
-    const chip = el("button", "chip chip-x", label);
-    chip.type = "button";
-    chip.dataset.remove = key;
-    chip.setAttribute("aria-label", `حذف فیلتر ${label}`);
-    chip.append(icon("x"));
-    return chip;
+/* -----------------------------
+   جستجوهای اخیر و فیلترها
+----------------------------- */
+
+export function renderRecentSearches(searches) {
+  const label = document.createElement("span");
+
+  label.className = "muted";
+  label.textContent = "جستجوهای اخیر";
+
+  recentSearches.innerHTML = "";
+  recentSearches.append(label);
+
+  searches.forEach((search) => {
+    const button = document.createElement("button");
+
+    button.className = "chip";
+    button.type = "button";
+    button.textContent = search;
+    button.dataset.search = search;
+
+    recentSearches.append(button);
   });
-  const clear = el("button", "chip-clear", "پاک‌کردن همه");
-  clear.type = "button";
-  clear.id = "clear-filters";
-  box.replaceChildren(el("span", "muted", "فیلترهای فعال"), ...nodes, clear);
+
+  recentSearches.hidden = searches.length === 0;
 }
 
 export function renderFilterCount(count) {
-  const badge = $("#filter-count");
-  badge.hidden = count === 0;
-  badge.textContent = toFa(count);
+  filterCount.textContent = toFa(count);
+  filterCount.hidden = count === 0;
 }
 
-// ---------- جستجو ----------
+function filterChip(type, text) {
+  const button = document.createElement("button");
 
-export function setSearchError(message) {
-  const error = $("#search-error");
-  error.textContent = message;
-  error.hidden = !message;
-  $("#search-input").setAttribute("aria-invalid", message ? "true" : "false");
+  button.className = "chip chip-x";
+  button.type = "button";
+  button.dataset.remove = type;
+  button.innerHTML = `${escapeHtml(text)}
+    <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>`;
+
+  return button;
 }
 
-export function setSearchInput(text) {
-  $("#search-input").value = text;
+export function renderActiveFilters(filters) {
+  activeFilters.innerHTML = "";
+
+  const chips = [];
+
+  if (filters.gender) {
+    chips.push(
+      filterChip(
+        "gender",
+        `جنسیت: ${filters.gender === "male" ? "مرد" : "زن"}`,
+      ),
+    );
+  }
+
+  if (filters.ageMin !== null || filters.ageMax !== null) {
+    chips.push(
+      filterChip(
+        "age",
+        `سن: ${toFa(filters.ageMin ?? 0)} تا ${filters.ageMax === null ? "∞" : toFa(filters.ageMax)}`,
+      ),
+    );
+  }
+
+  if (filters.city) {
+    chips.push(filterChip("city", `شهر: ${filters.city}`));
+  }
+
+  activeFilters.hidden = chips.length === 0;
+
+  if (!chips.length) {
+    return;
+  }
+
+  const title = document.createElement("span");
+
+  title.className = "muted";
+  title.textContent = "فیلترهای فعال";
+
+  const clearButton = document.createElement("button");
+
+  clearButton.className = "chip-clear";
+  clearButton.type = "button";
+  clearButton.id = "clear-filters";
+  clearButton.textContent = "پاک‌کردن همه";
+
+  activeFilters.append(title, ...chips, clearButton);
 }
 
-// ---------- مودال‌ها ----------
+/* -----------------------------
+   جزئیات کاربر
+----------------------------- */
 
-export function openDialog(id) {
-  const dialog = $(`#${id}`);
-  if (!dialog.open) dialog.showModal();
-}
+export function renderDetails(user) {
+  const dialog = document.querySelector("#detail-dialog");
 
-export function closeDialog(id) {
-  const dialog = $(`#${id}`);
-  if (dialog.open) dialog.close();
-}
+  document.querySelector("#detail-title").textContent = fullName(user);
 
-export function setFieldError(input, message) {
-  const error = input.closest(".field").querySelector(".field-error");
-  error.textContent = message;
-  error.hidden = !message;
-  input.setAttribute("aria-invalid", message ? "true" : "false");
-}
+  const avatar = dialog.querySelector(".avatar");
+  avatar.textContent = initials(user);
 
-// --- فرم کاربر ---
+  const badge = dialog.querySelector(".detail-title .badge");
+  badge.className = user.local ? "badge badge-local" : "badge badge-ok";
+  badge.textContent = user.local ? "محلی" : "سرور";
 
-const USER_FIELDS = ["firstName", "lastName", "email", "age", "city"];
+  const id = String(user.id);
+  const idText = /^\d+$/.test(id) ? toFa(id) : id;
 
-export function resetUserForm(user) {
-  const form = $("#user-form");
-  form.reset();
-  form.querySelectorAll(".input").forEach((input) => setFieldError(input, ""));
-  setFormError("");
-  if (user)
-    USER_FIELDS.forEach((name) => {
-      form.elements[name].value = user[name];
-    });
-  $("#dialog-title").textContent = user ? "ویرایش کاربر" : "افزودن کاربر";
-}
-
-export function readUserForm() {
-  const values = Object.fromEntries(new FormData($("#user-form")));
-  return Object.fromEntries(
-    USER_FIELDS.map((name) => [name, String(values[name] ?? "").trim()]),
-  );
-}
-
-export function showFormErrors(errors) {
-  const inputs = [...$("#user-form").querySelectorAll(".input")];
-  inputs.forEach((input) => setFieldError(input, errors[input.name] ?? ""));
-  inputs.find((input) => errors[input.name])?.focus();
-}
-
-export function setFormError(message) {
-  const error = $("#form-error");
-  error.textContent = message;
-  error.hidden = !message;
-}
-
-export function setSubmitting(isSubmitting) {
-  const button = $("#user-form button[type='submit']");
-  button.disabled = isSubmitting;
-  button.textContent = isSubmitting ? "در حال ذخیره…" : "ذخیره";
-}
-
-// --- جزئیات کاربر ---
-
-function createDetailRow(label, value, isLtr) {
-  const dt = el("dt", "", label);
-  const dd = el("dd", "", value);
-  if (isLtr) dd.dir = "ltr";
-  const row = el("div");
-  row.append(dt, dd);
-  return row;
-}
-
-export function fillDetail(user, isDeleted) {
-  $(".avatar-lg").className = `avatar avatar-lg ${avatarClass(user)}`;
-  $(".avatar-lg").textContent = initials(user);
-  $("#detail-title").textContent = fullName(user);
-  const badge = $("#detail-dialog .badge");
-  badge.className =
-    user.source === "local" ? "badge badge-local" : "badge badge-ok";
-  badge.textContent = user.source === "local" ? "محلی" : "سرور";
-  const id = typeof user.id === "number" ? toFa(user.id) : "—";
-  $(".detail-list").replaceChildren(
-    createDetailRow("ایمیل", user.email, true),
-    createDetailRow("تلفن", user.phone || "—", true),
-    createDetailRow("سن", toFa(user.age)),
-    createDetailRow("جنسیت", GENDER_LABELS[user.gender] ?? "—"),
-    createDetailRow("شهر", user.city || "—", true),
-    createDetailRow("شناسه", id),
-  );
-  $("#detail-edit").hidden = isDeleted;
-}
-
-// --- تأیید حذف ---
-
-export function setConfirmText(name) {
-  $("#confirm-text").textContent =
-    `«${name}» از فهرست حذف می‌شود. ادامه می‌دهید؟`;
-}
-
-export function setConfirmError(message) {
-  const error = $("#confirm-error");
-  error.textContent = message;
-  error.hidden = !message;
-}
-
-// --- فرم فیلتر ---
-
-export function fillFilterForm(filters, cities) {
-  const form = $("#filter-form");
-  form.elements.gender.value = filters.gender;
-  form.elements.ageMin.value = filters.ageMin ?? "";
-  form.elements.ageMax.value = filters.ageMax ?? "";
-  const select = form.elements.city;
-  select.replaceChildren(
-    new Option("همه شهرها", ""),
-    ...cities.map((c) => new Option(c, c)),
-  );
-  select.value = filters.city;
-  form.elements.sort.value = filters.sort;
-  setFilterError("");
-}
-
-export function readFilterForm() {
-  const form = $("#filter-form");
-  return {
-    gender: form.elements.gender.value,
-    ageMin: form.elements.ageMin.value.trim(),
-    ageMax: form.elements.ageMax.value.trim(),
-    city: form.elements.city.value,
-    sort: form.elements.sort.value,
-  };
-}
-
-export function setFilterError(message) {
-  const error = $("#flt-age-error");
-  error.textContent = message;
-  error.hidden = !message;
+  dialog.querySelector(".detail-list").innerHTML = `
+    <div><dt>ایمیل</dt><dd dir="ltr">${escapeHtml(user.email)}</dd></div>
+    <div><dt>تلفن</dt><dd dir="ltr">${escapeHtml(user.phone ?? "-")}</dd></div>
+    <div><dt>سن</dt><dd>${toFa(user.age)}</dd></div>
+    <div><dt>جنسیت</dt><dd>${user.gender === "female" ? "زن" : "مرد"}</dd></div>
+    <div><dt>شهر</dt><dd dir="ltr">${escapeHtml(user.address?.city ?? "-")}</dd></div>
+    <div><dt>شناسه</dt><dd dir="ltr">${escapeHtml(idText)}</dd></div>
+  `;
 }

@@ -1,51 +1,17 @@
-const BASE_URL = "https://dummyjson.com";
-const JSON_HEADERS = { "Content-Type": "application/json" };
+// limit=0 یعنی همه کاربران (۲۰۸ نفر)، نه فقط ۳۰ نفر پیش‌فرض
+const API_URL = "https://dummyjson.com/users?limit=0";
 
-async function request(path, options) {
-  const res = await fetch(`${BASE_URL}${path}`, options);
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status}`);
+/**
+ * دریافت کاربران از API
+ */
+export async function fetchUsers() {
+  const response = await fetch(API_URL);
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
   }
-  return res.json();
-}
-function normalizeUser(u) {
-  return {
-    id: u.id,
-    firstName: u.firstName,
-     lastName: u.lastName,
-    email: u.email,
-    age: u.age,
-    gender: u.gender,
-    phone: u.phone ?? "",
-    city: u.address?.city ?? "",
-    image: u.image ?? "",
-    role: u.role ?? "user",
-    jobTitle: u.company?.title ?? "",
-    source: "server",
-  };
-}
 
-export async function getUsers() {
-  const data = await request("/users?limit=0");
-  return data.users.map(normalizeUser);
-}
+  const data = await response.json();
 
-export function createUserRequest(values) {
-  return request("/users/add", {
-   method: "POST",
-    headers: JSON_HEADERS,
-    body: JSON.stringify(values),
-  });
-}
-
-export function updateUserRequest(id, values) {
-  return request(`/users/${id}`, {
-    method: "PUT",
-    headers: JSON_HEADERS,
-    body: JSON.stringify(values),
-  });
-}
-
-export function deleteUserRequest(id) {
-  return request(`/users/${id}`, { method: "DELETE" });
+  return data.users;
 }
