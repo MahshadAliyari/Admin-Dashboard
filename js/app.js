@@ -600,47 +600,64 @@ function syncFilterForm() {
 
 function setupFilter() {
   const form = $("#filter-form");
+  const openFilterButton = $("#open-filter");
+  const resetFilterButton = $("#filter-reset");
+  const filterDialog = $("#filter-dialog");
 
-  $("#open-filter").addEventListener("click", () => {
-    fillCityFilter();
-    syncFilterForm();
-    openDialog($("#filter-dialog"));
-  });
+  // باز کردن پنجره فیلتر
+  if (openFilterButton && filterDialog) {
+    openFilterButton.addEventListener("click", () => {
+      fillCityFilter();
+      syncFilterForm();
+      openDialog(filterDialog);
+    });
+  }
 
-  $("#filter-reset").addEventListener("click", () => {
-    state.filters = { ...DEFAULT_FILTERS };
-    state.page = 1;
-    $("#filter-dialog").close();
-    renderUsersPanel();
-  });
+  // پاک کردن فیلترها
+  if (resetFilterButton && filterDialog) {
+    resetFilterButton.addEventListener("click", () => {
+      state.filters = { ...DEFAULT_FILTERS };
+      state.page = 1;
+      filterDialog.close();
+      renderUsersPanel();
+    });
+  }
 
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
+  // ثبت فیلترها
+  if (form && filterDialog) {
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
 
-    const formData = new FormData(form);
-    const ageMin = field(formData, "ageMin");
-    const ageMax = field(formData, "ageMax");
-    const error = $("#flt-age-error");
+      const formData = new FormData(form);
+      const ageMin = field(formData, "ageMin");
+      const ageMax = field(formData, "ageMax");
+      const error = $("#flt-age-error");
 
-    if (ageMin && ageMax && Number(ageMin) > Number(ageMax)) {
-      error.textContent = "حداقل سن نمی‌تواند بیشتر از حداکثر سن باشد.";
-      return;
-    }
+      if (ageMin && ageMax && Number(ageMin) > Number(ageMax)) {
+        if (error) {
+          error.textContent =
+            "حداقل سن نمی‌تواند بیشتر از حداکثر سن باشد.";
+        }
+        return;
+      }
 
-    error.textContent = "";
+      if (error) {
+        error.textContent = "";
+      }
 
-    state.filters = {
-      gender: field(formData, "gender"),
-      ageMin,
-      ageMax,
-      city: field(formData, "city"),
-      sort: field(formData, "sort") || "default",
-    };
-    state.page = 1;
+      state.filters = {
+        gender: field(formData, "gender"),
+        ageMin,
+        ageMax,
+        city: field(formData, "city"),
+        sort: field(formData, "sort") || "default",
+      };
 
-    $("#filter-dialog").close();
-    renderUsersPanel();
-  });
+      state.page = 1;
+      filterDialog.close();
+      renderUsersPanel();
+    });
+  }
 }
 
 function removeFilter(key) {
@@ -1238,76 +1255,94 @@ function handleClick(event) {
 /* =========================================================
    SETUP
    ========================================================= */
-
 function setupEvents() {
   document.addEventListener("click", handleClick);
 
-  $("#menu-toggle").addEventListener("click", () =>
-    setMenu(!document.body.classList.contains("menu-open")),
-  );
-  $("#backdrop").addEventListener("click", () => setMenu(false));
+  // باز کردن فیلتر کاربران
+  const openFilterButton = $("#open-filter");
 
+  if (openFilterButton) {
+    openFilterButton.addEventListener("click", () => {
+      fillCityFilter();
+      syncFilterForm();
+      openDialog($("#filter-dialog"));
+    });
+  }
+
+  // بستن منو با کلیک روی پس‌زمینه
+  const backdrop = $("#backdrop");
+
+  if (backdrop) {
+    backdrop.addEventListener("click", () => setMenu(false));
+  }
+
+  // بستن منو با کلید Escape
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
+
     setMenu(false);
+
     const newMenu = $("#new-menu");
-    if (newMenu) newMenu.open = false;
-  });
 
-  // کلیک روی پس‌زمینه‌ی مودال، آن را می‌بندد
-  $$("dialog").forEach((dialog) => {
-    dialog.addEventListener("click", (event) => {
-      if (event.target === dialog) dialog.close();
-    });
-  });
-
-  $("#user-form").addEventListener("submit", handleUserSubmit);
-  $("#reply-form").addEventListener("submit", handleReplySubmit);
-  $("#post-form").addEventListener("submit", handlePostSubmit);
-  $("#page-form").addEventListener("submit", handlePageSubmit);
-  $("#quick-draft-form").addEventListener("submit", handleQuickDraft);
-  $("#settings-form").addEventListener("submit", handleSettingsSubmit);
-  $("#media-input").addEventListener("change", handleMediaSelected);
-
-  $("#detail-edit").addEventListener("click", () => {
-    const id = state.detailId;
-    $("#detail-dialog").close();
-    if (id) openUserDialog(id);
-  });
-
-  $("#confirm-ok").addEventListener("click", () => {
-    const action = state.confirmAction;
-    state.confirmAction = null;
-    $("#confirm-dialog").close();
-    action?.();
-  });
-
-  $("#retry-btn").addEventListener("click", loadData);
-
-  $("#post-search").addEventListener(
-    "input",
-    debounce((event) => {
-      state.postQuery = event.target.value;
-      renderPosts();
-    }, 200),
-  );
-
-  $("#post-status").addEventListener("change", (event) => {
-    state.postStatus = event.target.value;
-    renderPosts();
-  });
-
-  window.addEventListener("hashchange", () => {
-    const hash = location.hash.slice(1);
-
-    if (VIEWS.includes(hash)) {
-      navigate(hash, { updateHash: false });
-    } else if (hash === "admins") {
-      navigate("users", { updateHash: false });
-      scrollToAdmins();
+    if (newMenu) {
+      newMenu.open = false;
     }
   });
 }
+
+// کلیک روی پس‌زمینه‌ی مودال، آن را می‌بندد
+$$("dialog").forEach((dialog) => {
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) dialog.close();
+  });
+});
+
+$("#user-form").addEventListener("submit", handleUserSubmit);
+$("#reply-form").addEventListener("submit", handleReplySubmit);
+$("#post-form").addEventListener("submit", handlePostSubmit);
+$("#page-form").addEventListener("submit", handlePageSubmit);
+$("#quick-draft-form").addEventListener("submit", handleQuickDraft);
+$("#settings-form").addEventListener("submit", handleSettingsSubmit);
+$("#media-input").addEventListener("change", handleMediaSelected);
+
+$("#detail-edit").addEventListener("click", () => {
+  const id = state.detailId;
+  $("#detail-dialog").close();
+  if (id) openUserDialog(id);
+});
+
+$("#confirm-ok").addEventListener("click", () => {
+  const action = state.confirmAction;
+  state.confirmAction = null;
+  $("#confirm-dialog").close();
+  action?.();
+});
+
+$("#retry-btn").addEventListener("click", loadData);
+
+$("#post-search").addEventListener(
+  "input",
+  debounce((event) => {
+    state.postQuery = event.target.value;
+    renderPosts();
+  }, 200),
+);
+
+$("#post-status").addEventListener("change", (event) => {
+  state.postStatus = event.target.value;
+  renderPosts();
+});
+
+window.addEventListener("hashchange", () => {
+  const hash = location.hash.slice(1);
+
+  if (VIEWS.includes(hash)) {
+    navigate(hash, { updateHash: false });
+  } else if (hash === "admins") {
+    navigate("users", { updateHash: false });
+    scrollToAdmins();
+  }
+});
 
 async function init() {
   applySettings();

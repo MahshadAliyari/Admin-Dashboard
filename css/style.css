@@ -55,8 +55,7 @@
 }
 
 html {
-  font-size: 100%;
-  -webkit-text-size-adjust: 100%;
+  
   scroll-padding-top: calc(var(--bar-h) + 1rem);
 }
 
@@ -2094,7 +2093,7 @@ footer {
 }
 
 /* =========================================================
-   ≥ 64rem (۱۰۲۴px) — سایدبار ثابت مثل وردپرس
+   ≥ 64rem (۱۰۲۴px) 
    ========================================================= */
 
 @media (min-width: 64rem) {
@@ -2574,4 +2573,9 @@ textarea {
 
 :root[data-theme="light"] footer {
   border-color: var(--border);
+}
+@media (min-width: 1024px) {
+  html {
+    font-size: 112.5%;
+  }
 }
