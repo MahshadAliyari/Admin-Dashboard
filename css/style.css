@@ -55,7 +55,6 @@
 }
 
 html {
-  
   scroll-padding-top: calc(var(--bar-h) + 1rem);
 }
 
@@ -2127,22 +2126,22 @@ footer {
   .welcome {
     padding: 1.5rem;
   }
-  
-.gender-chart {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1.25rem;
-  transform: translateY(48px);
-}
 
-.age-chart {
-  display: flex;
-  align-items: stretch;
-  gap: 0.6rem;
-  height: 11rem;
-  transform: translateY(50px);
-}
+  .gender-chart {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    transform: translateY(48px);
+  }
+
+  .age-chart {
+    display: flex;
+    align-items: stretch;
+    gap: 0.6rem;
+    height: 11rem;
+    transform: translateY(50px);
+  }
 }
 
 /* =========================================================
@@ -2165,22 +2164,22 @@ footer {
   .metabox-wide {
     grid-column: auto;
   }
-  
-.gender-chart {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1.25rem;
-  transform: translateY(48px);
-}
 
-.age-chart {
-  display: flex;
-  align-items: stretch;
-  gap: 0.6rem;
-  height: 11rem;
-  transform: translateY(50px);
-}
+  .gender-chart {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    transform: translateY(48px);
+  }
+
+  .age-chart {
+    display: flex;
+    align-items: stretch;
+    gap: 0.6rem;
+    height: 11rem;
+    transform: translateY(50px);
+  }
 }
 /* ================= THEME SETTINGS ================= */
 
@@ -2248,10 +2247,10 @@ footer {
   border-radius: 14px;
   cursor: pointer;
   transition:
-    border-color .2s ease,
-    background .2s ease,
-    transform .2s ease,
-    box-shadow .2s ease;
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .theme-option:hover {
@@ -2352,7 +2351,7 @@ footer {
   border: 1px solid var(--border-light);
   border-radius: 50%;
   font-size: 13px;
-  transition: .2s ease;
+  transition: 0.2s ease;
 }
 
 .theme-option.active .theme-check {

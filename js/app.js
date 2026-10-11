@@ -635,8 +635,7 @@ function setupFilter() {
 
       if (ageMin && ageMax && Number(ageMin) > Number(ageMax)) {
         if (error) {
-          error.textContent =
-            "حداقل سن نمی‌تواند بیشتر از حداکثر سن باشد.";
+          error.textContent = "حداقل سن نمی‌تواند بیشتر از حداکثر سن باشد.";
         }
         return;
       }

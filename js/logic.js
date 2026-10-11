@@ -1,4 +1,3 @@
-
 /* ---------- قالب‌بندی ---------- */
 
 export function faNumber(value) {
@@ -72,7 +71,8 @@ export const activeUsers = (users, deletedIds) =>
   users.filter((user) => !isDeleted(user, deletedIds));
 
 export function userStatus(user, deletedIds) {
-  if (isDeleted(user, deletedIds)) return { className: "danger", label: "حذف‌شده" };
+  if (isDeleted(user, deletedIds))
+    return { className: "danger", label: "حذف‌شده" };
   if (user.local) return { className: "warning", label: "محلی" };
   return { className: "success", label: "سرور" };
 }
@@ -124,7 +124,10 @@ const AGE_BUCKETS = [
 ];
 
 export function ageGroups(users) {
-  const groups = AGE_BUCKETS.map((bucket) => ({ label: bucket.label, count: 0 }));
+  const groups = AGE_BUCKETS.map((bucket) => ({
+    label: bucket.label,
+    count: 0,
+  }));
 
   users.forEach((user) => {
     const age = Number(user.age);
@@ -173,9 +176,12 @@ export function filterUsers(users, { tab, search, filters, deletedIds }) {
     );
   }
 
-  if (filters.gender) list = list.filter((user) => user.gender === filters.gender);
-  if (filters.ageMin) list = list.filter((user) => Number(user.age) >= Number(filters.ageMin));
-  if (filters.ageMax) list = list.filter((user) => Number(user.age) <= Number(filters.ageMax));
+  if (filters.gender)
+    list = list.filter((user) => user.gender === filters.gender);
+  if (filters.ageMin)
+    list = list.filter((user) => Number(user.age) >= Number(filters.ageMin));
+  if (filters.ageMax)
+    list = list.filter((user) => Number(user.age) <= Number(filters.ageMax));
   if (filters.city) list = list.filter((user) => user.city === filters.city);
 
   const sorters = {
@@ -246,7 +252,8 @@ export function filterPosts(posts, query = "", status = "all") {
   const q = query.trim().toLowerCase();
 
   return posts.filter((post) => {
-    const matchesText = !q || `${post.title} ${post.excerpt}`.toLowerCase().includes(q);
+    const matchesText =
+      !q || `${post.title} ${post.excerpt}`.toLowerCase().includes(q);
     const matchesStatus = status === "all" || post.status === status;
     return matchesText && matchesStatus;
   });
@@ -262,7 +269,15 @@ function csvCell(value) {
 }
 
 export function usersToCsv(users) {
-  const header = ["شناسه", "نام", "نام خانوادگی", "ایمیل", "شهر", "جنسیت", "سن"];
+  const header = [
+    "شناسه",
+    "نام",
+    "نام خانوادگی",
+    "ایمیل",
+    "شهر",
+    "جنسیت",
+    "سن",
+  ];
 
   const rows = users.map((user) => [
     user.id,
@@ -274,5 +289,7 @@ export function usersToCsv(users) {
     user.age,
   ]);
 
-  return [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
+  return [header, ...rows]
+    .map((row) => row.map(csvCell).join(","))
+    .join("\r\n");
 }

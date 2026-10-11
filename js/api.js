@@ -1,6 +1,4 @@
-
-const API_URL =
-  "https://mcp.httpstatus.com/dummy/users?count=10";
+const API_URL = "https://mcp.httpstatus.com/dummy/users?count=10";
 
 export async function fetchUsers() {
   try {

@@ -1,4 +1,3 @@
-
 import {
   faNumber,
   escapeHtml,
