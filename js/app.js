@@ -1,930 +1,1378 @@
+/* =========================================================
+   APP — state، رویدادها و اتصال ماژول‌ها
+   api.js (شبکه) · storage.js (ذخیره) · logic.js (منطق خالص) · ui.js (DOM)
+   ========================================================= */
+
 import { fetchUsers } from "./api.js";
-
 import {
-  toFa,
+  STORAGE,
+  loadJSON,
+  loadArray,
+  saveJSON,
+  clearAllData,
+  createId,
+} from "./storage.js";
+import {
+  escapeHtml,
   fullName,
-  renderUsers,
-  renderStats,
-  renderCharts,
-  renderTabCounts,
-  renderCityOptions,
-  renderPager,
-  renderRecentSearches,
-  renderFilterCount,
-  renderActiveFilters,
-  renderDetails,
-  showLoading,
-  showError,
-  showEmpty,
-  hideStates,
-} from "./ui.js";
+  normalizeUser,
+  activeUsers,
+  computeStats,
+  filterUsers,
+  filterPosts,
+  validateUser,
+  validateTitle,
+  validateSearch,
+  usersToCsv,
+  debounce,
+} from "./logic.js";
+import * as ui from "./ui.js";
 
-/* -----------------------------
-   عناصر DOM
------------------------------ */
+const { $, $$ } = ui;
 
-const $ = (selector) => document.querySelector(selector);
+/* =========================================================
+   CONSTANTS
+   ========================================================= */
 
-const searchForm = $("#search-form");
-const searchInput = $("#search-input");
-const searchError = $("#search-error");
-const retryButton = $("#retry-btn");
-const usersBody = $("#users-body");
-const usersPanel = $("#users-panel");
+const VIEWS = [
+  "dashboard",
+  "users",
+  "comments",
+  "posts",
+  "pages",
+  "media",
+  "reports",
+  "settings",
+];
 
-const addUserButton = $("#add-user-btn");
-const userDialog = $("#user-dialog");
-const userForm = $("#user-form");
-const dialogCancel = $("#dialog-cancel");
+const VIEW_TITLES = {
+  dashboard: "پیشخوان",
+  users: "کاربران",
+  comments: "نظرات",
+  posts: "نوشته‌ها",
+  pages: "برگه‌ها",
+  media: "رسانه",
+  reports: "گزارش‌ها",
+  settings: "تنظیمات",
+};
 
-const filterDialog = $("#filter-dialog");
-const filterForm = $("#filter-form");
-const openFilter = $("#open-filter");
-const filterReset = $("#filter-reset");
-const filterCancel = $("#filter-cancel");
-const ageError = $("#flt-age-error");
-
-const detailDialog = $("#detail-dialog");
-const detailClose = $("#detail-close");
-const detailClose2 = $("#detail-close-2");
-const detailEdit = $("#detail-edit");
-
-const confirmDialog = $("#confirm-dialog");
-const confirmCancel = $("#confirm-cancel");
-const confirmOk = $("#confirm-ok");
-const confirmText = $("#confirm-text");
-
-const recentSearchContainer = $("#recent-searches");
-const activeFilters = $("#active-filters");
-const tabs = document.querySelectorAll(".tab");
-const sortButton = $(".sort-btn");
-const pagerButtons = $("#pager-btns");
-
-/* -----------------------------
-   LocalStorage
------------------------------ */
-
-const SEARCH_KEY = "scene-recent-searches";
-const USERS_KEY = "scene-local-users";
-const DELETED_KEY = "scene-deleted-ids";
-const EDITS_KEY = "scene-server-edits";
-
-function readJSON(key, fallback) {
-  try {
-    return JSON.parse(localStorage.getItem(key)) ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeJSON(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-const getRecentSearches = () => readJSON(SEARCH_KEY, []);
-const getLocalUsers = () => readJSON(USERS_KEY, []);
-const saveLocalUsers = (list) => writeJSON(USERS_KEY, list);
-
-function saveRecentSearch(value) {
-  const search = value.trim();
-
-  if (!search) {
-    return;
-  }
-
-  const searches = getRecentSearches()
-    .filter((item) => item.toLowerCase() !== search.toLowerCase())
-    .slice(0, 4);
-
-  searches.unshift(search);
-
-  writeJSON(SEARCH_KEY, searches);
-  renderRecentSearches(searches);
-}
-
-/* -----------------------------
-   State
------------------------------ */
-
-const pageSize = 10;
-
-let allUsers = []; // همه کاربران (سرور + محلی) حتی حذف‌شده‌ها
-let filteredUsers = []; // نتیجه نهایی برای جدول
-let currentPage = 1;
-let activeTab = "all";
-
-let selectedUser = null;
-let editingUser = null;
-let deletingUser = null;
-
-let deletedIds = new Set(readJSON(DELETED_KEY, []).map(String));
-
-const emptyFilters = () => ({
+const DEFAULT_FILTERS = {
   gender: "",
-  ageMin: null,
-  ageMax: null,
+  ageMin: "",
+  ageMax: "",
   city: "",
-  sort: "",
-});
+  sort: "default",
+};
+const DEFAULT_SETTINGS = {
+  siteTitle: "پنل صحنه",
+  itemsPerPage: 10,
+  notifications: true,
+};
 
-let filters = emptyFilters();
+const SEED_COMMENTS = [
+  {
+    id: "comment-1",
+    name: "مریم احمدی",
+    date: "2026/10/06",
+    text: "این پنل مدیریت خیلی خوب طراحی شده است.",
+    status: "pending",
+    replies: [],
+  },
+  {
+    id: "comment-2",
+    name: "علی رضایی",
+    date: "2026/10/05",
+    text: "ممنون، اطلاعات کاربران خیلی مرتب نمایش داده شده.",
+    status: "pending",
+    replies: [],
+  },
+  {
+    id: "comment-3",
+    name: "سارا محمدی",
+    date: "2026/10/04",
+    text: "طراحی داشبورد بسیار زیباست.",
+    status: "approved",
+    replies: [],
+  },
+  {
+    id: "comment-4",
+    name: "کاربر ناشناس",
+    date: "2026/10/03",
+    text: "این یک نظر آزمایشی است.",
+    status: "spam",
+    replies: [],
+  },
+  {
+    id: "comment-5",
+    name: "رضا کریمی",
+    date: "2026/10/02",
+    text: "امکان مدیریت کاربران خیلی کاربردی است.",
+    status: "approved",
+    replies: [],
+  },
+];
 
-const isDeleted = (user) => deletedIds.has(String(user.id));
-const visibleUsers = () => allUsers.filter((user) => !isDeleted(user));
+const SEED_POSTS = [
+  {
+    id: "post-1",
+    title: "راهنمای استفاده از پنل مدیریت",
+    excerpt: "نوشته نمونه برای مدیریت محتوای سایت.",
+    status: "published",
+  },
+  {
+    id: "post-2",
+    title: "آموزش مدیریت کاربران",
+    excerpt: "مقاله آموزشی مربوط به کاربران سیستم.",
+    status: "draft",
+  },
+];
 
-function saveDeletedIds() {
-  writeJSON(DELETED_KEY, [...deletedIds]);
-}
+const SEED_PAGES = [
+  { id: "page-1", title: "صفحه اصلی", desc: "صفحه اصلی وب‌سایت" },
+  { id: "page-2", title: "درباره ما", desc: "معرفی مجموعه" },
+];
 
-/* -----------------------------
-   شروع برنامه
------------------------------ */
+const SEED_MEDIA = [
+  { id: "media-1", name: "banner.jpg", size: 1258291 },
+  { id: "media-2", name: "profile.png", size: 870400 },
+  { id: "media-3", name: "dashboard.webp", size: 430080 },
+];
 
-async function init() {
-  renderRecentSearches(getRecentSearches());
-  renderActiveFilters(filters);
-  renderFilterCount(0);
+/* =========================================================
+   STATE
+   ========================================================= */
 
-  await loadUsers();
-}
+const state = {
+  view: "dashboard",
 
-async function loadUsers() {
-  showLoading();
+  users: [],
+  localUsers: loadArray(STORAGE.localUsers),
+  deletedIds: new Set(loadArray(STORAGE.deletedIds).map(String)),
+  serverEdits: loadJSON(STORAGE.serverEdits, {}),
+  recentSearches: loadArray(STORAGE.recentSearches),
 
-  try {
-    const apiUsers = await fetchUsers();
+  comments: loadArray(STORAGE.comments, SEED_COMMENTS),
+  posts: loadArray(STORAGE.posts, SEED_POSTS),
+  pages: loadArray(STORAGE.pages, SEED_PAGES),
+  media: loadArray(STORAGE.media, SEED_MEDIA),
+  mediaPreviews: new Map(), // فقط در همین نشست (blob URL)
 
-    const edits = readJSON(EDITS_KEY, {});
+  settings: { ...DEFAULT_SETTINGS, ...loadJSON(STORAGE.settings, {}) },
 
-    const serverUsers = apiUsers.map((user) =>
-      edits[user.id] ? { ...user, ...edits[user.id] } : user,
+  tab: "all",
+  search: "",
+  page: 1,
+  filters: { ...DEFAULT_FILTERS },
+  commentFilter: "all",
+  postQuery: "",
+  postStatus: "all",
+
+  editingUserId: null,
+  editingPostId: null,
+  editingPageId: null,
+  detailId: null,
+  replyId: null,
+  confirmAction: null,
+
+  apiStatus: "loading",
+  lastSync: null,
+  loadError: "",
+};
+
+const pageSize = () => Number(state.settings.itemsPerPage) || 10;
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+
+function persist(key, value) {
+  if (!saveJSON(key, value)) {
+    ui.toast(
+      "ذخیره‌سازی در مرورگر ممکن نشد؛ تغییرات پس از بستن صفحه از بین می‌رود.",
+      "error",
     );
-
-    const localUsers = getLocalUsers().map((user) => ({
-      ...user,
-      local: true,
-    }));
-
-    allUsers = [...serverUsers, ...localUsers];
-
-    renderCityOptions(
-      [
-        ...new Set(allUsers.map((user) => user.address?.city).filter(Boolean)),
-      ].sort(),
-    );
-
-    applyFilters();
-  } catch (error) {
-    console.error(error);
-
-    showError("دریافت اطلاعات ناموفق بود. اتصال اینترنت را بررسی کنید.");
   }
 }
 
-/* -----------------------------
-   فیلتر اصلی
------------------------------ */
-
-function tabSource() {
-  const visible = visibleUsers();
-
-  switch (activeTab) {
-    case "server":
-      return visible.filter((user) => !user.local);
-    case "local":
-      return visible.filter((user) => user.local);
-    case "deleted":
-      return allUsers.filter(isDeleted);
-    default:
-      return visible;
-  }
+/** پیام‌های موفقیت فقط وقتی «اعلان‌ها» روشن باشد نمایش داده می‌شوند */
+function notify(message, type = "success") {
+  if (type === "success" && !state.settings.notifications) return;
+  ui.toast(message, type);
 }
 
-function applyFilters({ keepPage = false } = {}) {
-  let result = [...tabSource()];
+const findUser = (id) =>
+  state.users.find((user) => String(user.id) === String(id));
+const todayFa = () => new Date().toLocaleDateString("fa-IR");
 
-  const query = searchInput.value.trim().toLowerCase();
-
-  if (query) {
-    result = result.filter((user) => {
-      const name = fullName(user).toLowerCase();
-      const email = user.email?.toLowerCase() ?? "";
-
-      return name.includes(query) || email.includes(query);
-    });
-  }
-
-  if (filters.gender) {
-    result = result.filter((user) => user.gender === filters.gender);
-  }
-
-  if (filters.ageMin !== null) {
-    result = result.filter((user) => user.age >= filters.ageMin);
-  }
-
-  if (filters.ageMax !== null) {
-    result = result.filter((user) => user.age <= filters.ageMax);
-  }
-
-  if (filters.city) {
-    result = result.filter((user) => user.address?.city === filters.city);
-  }
-
-  if (filters.sort === "age-asc") {
-    result.sort((a, b) => a.age - b.age);
-  } else if (filters.sort === "age-desc") {
-    result.sort((a, b) => b.age - a.age);
-  } else if (filters.sort === "name-asc") {
-    result.sort((a, b) => fullName(a).localeCompare(fullName(b)));
-  }
-
-  filteredUsers = result;
-
-  const totalPages = Math.max(1, Math.ceil(result.length / pageSize));
-
-  currentPage = keepPage ? Math.min(currentPage, totalPages) : 1;
-
-  renderCurrentPage();
-  updateDashboard();
-  updateFilterUI();
+function openDialog(dialog) {
+  if (dialog && !dialog.open) dialog.showModal();
 }
 
-/* آمار، نمودار و شمارنده تب‌ها: روی همه کاربران فعال */
-function updateDashboard() {
-  const visible = visibleUsers();
+function closeDialogs() {
+  $$("dialog[open]").forEach((dialog) => dialog.close());
+}
 
-  renderStats(visible);
-  renderCharts(visible);
+const field = (formData, name) => String(formData.get(name) || "").trim();
 
-  renderTabCounts({
-    all: visible.length,
-    server: visible.filter((user) => !user.local).length,
-    local: visible.filter((user) => user.local).length,
-    deleted: allUsers.filter(isDeleted).length,
+/* =========================================================
+   RENDER
+   ========================================================= */
+
+function renderUsersPanel() {
+  const list = filterUsers(state.users, {
+    tab: state.tab,
+    search: state.search,
+    filters: state.filters,
+    deletedIds: state.deletedIds,
+  });
+
+  const size = pageSize();
+  const totalPages = Math.max(1, Math.ceil(list.length / size));
+  if (state.page > totalPages) state.page = totalPages;
+
+  const start = (state.page - 1) * size;
+
+  ui.renderActiveFilters(state.filters);
+  ui.renderRecentSearches(state.recentSearches);
+  ui.setSortIndicator(state.filters.sort);
+  ui.renderUsers(list.slice(start, start + size), state.deletedIds);
+  ui.renderPagination(list.length, state.page, size);
+
+  if (list.length) ui.showState("table");
+  else ui.showState(state.loadError && !state.users.length ? "error" : "empty");
+}
+
+function renderComments() {
+  ui.renderComments(state.comments, state.commentFilter);
+}
+
+function renderPosts() {
+  const filtered = filterPosts(state.posts, state.postQuery, state.postStatus);
+  ui.renderPosts(
+    filtered,
+    Boolean(state.postQuery.trim()) || state.postStatus !== "all",
+  );
+}
+
+function renderDashboard() {
+  const stats = computeStats(state.users, state.deletedIds);
+
+  ui.renderDashboard({
+    stats,
+    posts: state.posts,
+    pages: state.pages,
+    comments: state.comments,
+    recentUsers: activeUsers(
+      [...state.users].reverse(),
+      state.deletedIds,
+    ).slice(0, 5),
+    apiStatus: state.apiStatus,
+    lastSync: state.lastSync,
   });
 }
 
-function renderCurrentPage() {
-  const start = (currentPage - 1) * pageSize;
-  const pageUsers = filteredUsers.slice(start, start + pageSize);
+function renderAll() {
+  const stats = computeStats(state.users, state.deletedIds);
 
-  hideStates();
+  ui.renderStats(stats);
+  ui.renderCharts(state.users, state.deletedIds);
+  ui.renderReports(state.users, state.deletedIds);
 
-  if (filteredUsers.length === 0) {
-    renderUsers([], activeTab);
-    showEmpty();
-  } else {
-    renderUsers(pageUsers, activeTab);
-  }
-
-  renderPager(filteredUsers.length, currentPage, pageSize);
-  renderPaginationButtons();
+  renderUsersPanel();
+  renderComments();
+  renderPosts();
+  ui.renderPages(state.pages);
+  ui.renderMedia(state.media, state.mediaPreviews);
+  renderDashboard();
 }
 
-function goToPage(page) {
-  currentPage = page;
-  renderCurrentPage();
-}
+/* =========================================================
+   DATA LOADING (Loading / Error / Empty)
+   ========================================================= */
 
-function renderPaginationButtons() {
-  const totalPages = Math.ceil(filteredUsers.length / pageSize);
+async function loadData() {
+  state.apiStatus = "loading";
+  state.loadError = "";
+  ui.setApiStatus("loading");
+  ui.showState("loading");
 
-  pagerButtons.innerHTML = "";
-
-  const makeButton = (text, onClick, disabled = false) => {
-    const button = document.createElement("button");
-
-    button.className = "btn btn-sm";
-    button.type = "button";
-    button.textContent = text;
-    button.disabled = disabled;
-    button.addEventListener("click", onClick);
-
-    return button;
-  };
-
-  pagerButtons.append(
-    makeButton("قبلی", () => goToPage(currentPage - 1), currentPage <= 1),
+  const localUsers = state.localUsers.map((user) =>
+    normalizeUser({ ...user, local: true }, {}),
   );
 
-  /* پنجره ۵ صفحه‌ای دور صفحه فعلی */
-  const first = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
-  const last = Math.min(totalPages, first + 4);
+  try {
+    const serverUsers = await fetchUsers();
 
-  for (let page = first; page <= last; page++) {
-    const button = makeButton(toFa(page), () => goToPage(page));
+    state.users = [
+      ...serverUsers.map((user) => normalizeUser(user, state.serverEdits)),
+      ...localUsers,
+    ];
+    state.apiStatus = "ok";
+    state.lastSync = new Date();
+  } catch (error) {
+    // اپ بدون API هم کار می‌کند: کاربران محلی همچنان نمایش داده می‌شوند
+    state.users = localUsers;
+    state.apiStatus = "error";
+    state.loadError =
+      error.message || "دریافت اطلاعات کاربران با خطا مواجه شد.";
+    ui.setError(state.loadError);
+    ui.toast(state.loadError, "error");
+  } finally {
+    ui.setApiStatus(state.apiStatus);
+    renderAll();
+  }
+}
 
-    if (page === currentPage) {
-      button.classList.add("is-current");
-      button.setAttribute("aria-current", "page");
+/* =========================================================
+   NAVIGATION & MOBILE MENU
+   ========================================================= */
+
+function setMenu(open) {
+  document.body.classList.toggle("menu-open", open);
+  $("#menu-toggle")?.setAttribute("aria-expanded", String(open));
+  const backdrop = $("#backdrop");
+  if (backdrop) backdrop.hidden = !open;
+}
+
+function navigate(view, { updateHash = true } = {}) {
+  const target = VIEWS.includes(view) ? view : "dashboard";
+
+  state.view = target;
+  ui.showView(target);
+  setMenu(false);
+
+  document.title = `${VIEW_TITLES[target]} ‹ ${state.settings.siteTitle}`;
+
+  if (updateHash) history.replaceState(null, "", `#${target}`);
+
+  window.scrollTo({ top: 0 });
+  $("#main")?.focus({ preventScroll: true });
+}
+
+function scrollToAdmins() {
+  $("#admins")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function handleAnchor(event, anchor) {
+  const target = anchor.getAttribute("href").slice(1);
+
+  if (target === "top") {
+    event.preventDefault();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return true;
+  }
+
+  if (VIEWS.includes(target)) {
+    event.preventDefault();
+    navigate(target);
+    return true;
+  }
+
+  if (target === "admins") {
+    event.preventDefault();
+    navigate("users");
+    scrollToAdmins();
+    return true;
+  }
+
+  return false;
+}
+
+/* =========================================================
+   USERS: ADD / EDIT / DELETE / RESTORE
+   ========================================================= */
+
+function openUserDialog(id = null) {
+  const form = $("#user-form");
+  const user = id ? findUser(id) : null;
+  if (id && !user) return;
+
+  state.editingUserId = id ? String(id) : null;
+
+  form.reset();
+  ui.setFormErrors(form, {});
+  $("#dialog-title").textContent = user ? "ویرایش کاربر" : "افزودن کاربر";
+
+  if (user) {
+    $("#f-first").value = user.firstName;
+    $("#f-last").value = user.lastName;
+    $("#f-email").value = user.email;
+    $("#f-age").value = user.age ?? "";
+    $("#f-city").value = user.city;
+    $("#f-gender").value = user.gender;
+  }
+
+  openDialog($("#user-dialog"));
+}
+
+function addUser(data) {
+  const user = { id: createId("local"), ...data, phone: "", local: true };
+
+  state.localUsers.push(user);
+  persist(STORAGE.localUsers, state.localUsers);
+  state.users.push(normalizeUser(user, {}));
+}
+
+function updateUser(id, data) {
+  const index = state.users.findIndex((user) => String(user.id) === String(id));
+  if (index === -1) return;
+
+  const user = state.users[index];
+
+  if (user.local) {
+    const localIndex = state.localUsers.findIndex(
+      (item) => String(item.id) === String(id),
+    );
+    if (localIndex !== -1) {
+      state.localUsers[localIndex] = {
+        ...state.localUsers[localIndex],
+        ...data,
+      };
+      persist(STORAGE.localUsers, state.localUsers);
     }
-
-    pagerButtons.append(button);
+  } else {
+    state.serverEdits[String(id)] = {
+      ...(state.serverEdits[String(id)] || {}),
+      ...data,
+    };
+    persist(STORAGE.serverEdits, state.serverEdits);
   }
 
-  pagerButtons.append(
-    makeButton(
-      "بعدی",
-      () => goToPage(currentPage + 1),
-      totalPages === 0 || currentPage >= totalPages,
-    ),
-  );
+  state.users[index] = { ...user, ...data };
 }
 
-/* -----------------------------
-   فیلترهای UI
------------------------------ */
-
-function updateFilterUI() {
-  let count = 0;
-
-  if (filters.gender) count++;
-  if (filters.ageMin !== null || filters.ageMax !== null) count++;
-  if (filters.city) count++;
-
-  renderFilterCount(count);
-  renderActiveFilters(filters);
-}
-
-/* پر کردن فرم فیلتر از روی state فعلی */
-function syncFilterForm() {
-  filterForm
-    .querySelectorAll('input[name="gender"]')
-    .forEach((radio) => (radio.checked = radio.value === filters.gender));
-
-  $("#flt-age-min").value = filters.ageMin ?? "";
-  $("#flt-age-max").value = filters.ageMax ?? "";
-  $("#flt-city").value = filters.city;
-  $("#flt-sort").value = filters.sort;
-
-  ageError.hidden = true;
-}
-
-/* -----------------------------
-   فرم جستجو
------------------------------ */
-
-searchForm.addEventListener("submit", (event) => {
+function handleUserSubmit(event) {
   event.preventDefault();
 
-  searchInput.removeAttribute("aria-invalid");
-  searchError.hidden = true;
+  const form = event.currentTarget;
+  const formData = new FormData(form);
 
-  /* جستجوی خالی = پاک‌کردن جستجو */
-  saveRecentSearch(searchInput.value);
+  const data = {
+    firstName: field(formData, "firstName"),
+    lastName: field(formData, "lastName"),
+    email: field(formData, "email"),
+    age: Number(formData.get("age")),
+    city: field(formData, "city"),
+    gender: field(formData, "gender"),
+  };
 
-  applyFilters();
-});
+  const errors = validateUser(data, {
+    users: state.users,
+    editingId: state.editingUserId,
+  });
+  ui.setFormErrors(form, errors);
+  if (Object.keys(errors).length) return;
 
-recentSearchContainer.addEventListener("click", (event) => {
-  const button = event.target.closest(".chip");
-
-  if (!button) {
-    return;
+  if (state.editingUserId) {
+    updateUser(state.editingUserId, data);
+    notify("اطلاعات کاربر به‌روزرسانی شد.");
+  } else {
+    addUser(data);
+    notify("کاربر جدید اضافه شد.");
   }
 
-  searchInput.value = button.dataset.search;
-  searchInput.removeAttribute("aria-invalid");
-  searchError.hidden = true;
-
-  applyFilters();
-});
-
-retryButton.addEventListener("click", loadUsers);
-
-/* -----------------------------
-   Tabs (با پشتیبانی از کیبورد)
------------------------------ */
-
-function selectTab(tab) {
-  tabs.forEach((item) => {
-    const selected = item === tab;
-
-    item.setAttribute("aria-selected", String(selected));
-    item.tabIndex = selected ? 0 : -1;
-  });
-
-  usersPanel.setAttribute("aria-labelledby", tab.id);
-
-  activeTab = tab.dataset.tab;
-
-  applyFilters();
+  state.editingUserId = null;
+  $("#user-dialog").close();
+  renderAll();
 }
 
-tabs.forEach((tab, index) => {
-  tab.addEventListener("click", () => selectTab(tab));
+function requestDeleteUser(id) {
+  const user = findUser(id);
+  if (!user) return;
 
-  tab.addEventListener("keydown", (event) => {
-    const rtl = document.documentElement.dir === "rtl";
-    let next = null;
+  confirmAction({
+    title: "حذف کاربر",
+    text: `آیا از حذف «${fullName(user)}» مطمئن هستید؟ کاربر به بخش «حذف‌شده‌ها» منتقل می‌شود و قابل بازیابی است.`,
+    okLabel: "حذف کاربر",
+    onConfirm: () => {
+      state.deletedIds.add(String(id));
+      persist(STORAGE.deletedIds, [...state.deletedIds]);
+      notify("کاربر حذف شد.");
+      renderAll();
+    },
+  });
+}
 
-    if (event.key === "ArrowLeft") {
-      next = index + (rtl ? 1 : -1);
-    } else if (event.key === "ArrowRight") {
-      next = index + (rtl ? -1 : 1);
-    } else if (event.key === "Home") {
-      next = 0;
-    } else if (event.key === "End") {
-      next = tabs.length - 1;
+function restoreUser(id) {
+  state.deletedIds.delete(String(id));
+  persist(STORAGE.deletedIds, [...state.deletedIds]);
+  notify("کاربر بازیابی شد.");
+  renderAll();
+}
+
+function openDetails(id) {
+  const user = findUser(id);
+  if (!user) return;
+
+  state.detailId = String(id);
+  ui.renderDetails(user, state.deletedIds.has(String(id)));
+  openDialog($("#detail-dialog"));
+}
+
+/* =========================================================
+   GENERIC CONFIRM DIALOG
+   ========================================================= */
+
+function confirmAction({ title, text, okLabel = "تأیید", onConfirm }) {
+  $("#confirm-title").textContent = title;
+  $("#confirm-text").textContent = text;
+  $("#confirm-ok").textContent = okLabel;
+  state.confirmAction = onConfirm;
+  openDialog($("#confirm-dialog"));
+}
+
+/* =========================================================
+   SEARCH (با اعتبارسنجی، debounce و جستجوهای اخیر)
+   ========================================================= */
+
+function applySearch(value) {
+  state.search = value;
+  state.page = 1;
+  renderUsersPanel();
+}
+
+function setupSearch() {
+  const form = $("#search-form");
+  const input = $("#search-input");
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const value = input.value.trim();
+    const error = validateSearch(value);
+    ui.setSearchError(error);
+    if (error) return;
+
+    if (value) {
+      state.recentSearches = [
+        value,
+        ...state.recentSearches.filter((item) => item !== value),
+      ].slice(0, 5);
+      persist(STORAGE.recentSearches, state.recentSearches);
     }
 
-    if (next === null) {
+    applySearch(value);
+  });
+
+  const liveSearch = debounce(() => {
+    const value = input.value.trim();
+    // یک نویسه هنوز جستجوی معنادار نیست؛ خطا فقط هنگام ارسال فرم نشان داده می‌شود
+    if (value.length === 1) return;
+    ui.setSearchError("");
+    applySearch(value);
+  }, 250);
+
+  input.addEventListener("input", liveSearch);
+}
+
+/* =========================================================
+   FILTER DIALOG
+   ========================================================= */
+
+function fillCityFilter() {
+  const select = $("#flt-city");
+  const cities = [
+    ...new Set(state.users.map((user) => user.city).filter(Boolean)),
+  ].sort((a, b) => a.localeCompare(b, "fa"));
+
+  select.innerHTML =
+    `<option value="">همه شهرها</option>` +
+    cities
+      .map(
+        (city) =>
+          `<option value="${escapeHtml(city)}">${escapeHtml(city)}</option>`,
+      )
+      .join("");
+}
+
+function syncFilterForm() {
+  const { gender, ageMin, ageMax, city, sort } = state.filters;
+
+  const radio = $(`#filter-form input[name="gender"][value="${gender}"]`);
+  if (radio) radio.checked = true;
+
+  $("#flt-age-min").value = ageMin;
+  $("#flt-age-max").value = ageMax;
+  $("#flt-city").value = city;
+  $("#flt-sort").value = sort;
+  $("#flt-age-error").textContent = "";
+}
+
+function setupFilter() {
+  const form = $("#filter-form");
+
+  $("#open-filter").addEventListener("click", () => {
+    fillCityFilter();
+    syncFilterForm();
+    openDialog($("#filter-dialog"));
+  });
+
+  $("#filter-reset").addEventListener("click", () => {
+    state.filters = { ...DEFAULT_FILTERS };
+    state.page = 1;
+    $("#filter-dialog").close();
+    renderUsersPanel();
+  });
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const formData = new FormData(form);
+    const ageMin = field(formData, "ageMin");
+    const ageMax = field(formData, "ageMax");
+    const error = $("#flt-age-error");
+
+    if (ageMin && ageMax && Number(ageMin) > Number(ageMax)) {
+      error.textContent = "حداقل سن نمی‌تواند بیشتر از حداکثر سن باشد.";
       return;
     }
 
-    event.preventDefault();
+    error.textContent = "";
 
-    const target = tabs[(next + tabs.length) % tabs.length];
-
-    target.focus();
-    selectTab(target);
-  });
-});
-
-/* -----------------------------
-   Filter Dialog
------------------------------ */
-
-openFilter.addEventListener("click", () => {
-  syncFilterForm();
-  filterDialog.showModal();
-});
-
-filterCancel.addEventListener("click", () => filterDialog.close());
-
-filterReset.addEventListener("click", () => {
-  filters = emptyFilters();
-
-  syncFilterForm();
-  applyFilters();
-});
-
-filterForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-
-  const formData = new FormData(filterForm);
-
-  const ageMinValue = formData.get("ageMin");
-  const ageMaxValue = formData.get("ageMax");
-
-  const ageMin = ageMinValue === "" ? null : Number(ageMinValue);
-  const ageMax = ageMaxValue === "" ? null : Number(ageMaxValue);
-
-  if (ageMin !== null && ageMax !== null && ageMin > ageMax) {
-    ageError.textContent = "حداقل سن نمی‌تواند بیشتر از حداکثر سن باشد.";
-    ageError.hidden = false;
-
-    return;
-  }
-
-  ageError.hidden = true;
-
-  filters = {
-    gender: formData.get("gender") ?? "",
-    ageMin,
-    ageMax,
-    city: formData.get("city") ?? "",
-    sort: formData.get("sort") ?? "",
-  };
-
-  filterDialog.close();
-
-  applyFilters();
-});
-
-/* پاک کردن فیلتر از روی چیپ‌ها */
-activeFilters.addEventListener("click", (event) => {
-  const removeButton = event.target.closest("[data-remove]");
-
-  if (removeButton) {
-    const type = removeButton.dataset.remove;
-
-    if (type === "gender") filters.gender = "";
-    if (type === "city") filters.city = "";
-
-    if (type === "age") {
-      filters.ageMin = null;
-      filters.ageMax = null;
-    }
-
-    applyFilters();
-
-    return;
-  }
-
-  if (event.target.closest("#clear-filters")) {
-    const sort = filters.sort;
-
-    filters = { ...emptyFilters(), sort };
-
-    applyFilters();
-  }
-});
-
-/* Sort با ستون سن */
-sortButton.addEventListener("click", () => {
-  filters.sort = filters.sort === "age-asc" ? "age-desc" : "age-asc";
-
-  applyFilters();
-});
-
-/* -----------------------------
-   فرم کاربر (افزودن / ویرایش)
------------------------------ */
-
-function clearFormErrors() {
-  userForm.querySelectorAll(".field-error").forEach((element) => {
-    element.hidden = true;
-    element.textContent = "";
-  });
-
-  userForm
-    .querySelectorAll("[aria-invalid]")
-    .forEach((input) => input.removeAttribute("aria-invalid"));
-}
-
-function setFieldError(input, message) {
-  input.setAttribute("aria-invalid", "true");
-
-  const error = input.closest(".field").querySelector(".field-error");
-
-  error.textContent = message;
-  error.hidden = false;
-}
-
-function validateUserForm(values) {
-  const errors = [];
-
-  const check = (name, condition, message) => {
-    if (!condition) {
-      errors.push([userForm.elements[name], message]);
-    }
-  };
-
-  check("firstName", values.firstName, "نام را وارد کنید.");
-  check("lastName", values.lastName, "نام خانوادگی را وارد کنید.");
-  check(
-    "email",
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email),
-    "ایمیل واردشده معتبر نیست.",
-  );
-  check(
-    "age",
-    Number.isInteger(values.age) && values.age >= 1 && values.age <= 120,
-    "سن باید عددی بین ۱ تا ۱۲۰ باشد.",
-  );
-  check("city", values.city, "شهر را وارد کنید.");
-
-  return errors;
-}
-
-addUserButton.addEventListener("click", () => {
-  editingUser = null;
-
-  $("#dialog-title").textContent = "افزودن کاربر";
-
-  userForm.reset();
-  clearFormErrors();
-
-  userDialog.showModal();
-});
-
-dialogCancel.addEventListener("click", () => userDialog.close());
-
-userDialog.addEventListener("close", () => {
-  editingUser = null;
-});
-
-function persistUser(user) {
-  if (user.local) {
-    const list = getLocalUsers();
-    const index = list.findIndex((item) => item.id === user.id);
-
-    if (index !== -1) {
-      list[index] = user;
-      saveLocalUsers(list);
-    }
-
-    return;
-  }
-
-  /* کاربر سرور: فقط تغییرات را نگه می‌داریم */
-  const edits = readJSON(EDITS_KEY, {});
-
-  edits[user.id] = {
-    firstName: user.firstName,
-    lastName: user.lastName,
-    email: user.email,
-    age: user.age,
-    gender: user.gender,
-    address: user.address,
-  };
-
-  writeJSON(EDITS_KEY, edits);
-}
-
-userForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-
-  const formData = new FormData(userForm);
-
-  const values = {
-    firstName: String(formData.get("firstName") ?? "").trim(),
-    lastName: String(formData.get("lastName") ?? "").trim(),
-    email: String(formData.get("email") ?? "").trim(),
-    age: Number(formData.get("age")),
-    city: String(formData.get("city") ?? "").trim(),
-    gender: formData.get("gender") === "female" ? "female" : "male",
-  };
-
-  clearFormErrors();
-
-  const errors = validateUserForm(values);
-
-  if (errors.length) {
-    errors.forEach(([input, message]) => setFieldError(input, message));
-    errors[0][0].focus();
-
-    return;
-  }
-
-  if (editingUser) {
-    Object.assign(editingUser, {
-      firstName: values.firstName,
-      lastName: values.lastName,
-      email: values.email,
-      age: values.age,
-      gender: values.gender,
-      address: { ...(editingUser.address ?? {}), city: values.city },
-    });
-
-    persistUser(editingUser);
-  } else {
-    const newUser = {
-      id: `local-${Date.now()}`,
-      firstName: values.firstName,
-      lastName: values.lastName,
-      email: values.email,
-      age: values.age,
-      gender: values.gender,
-      address: { city: values.city },
-      local: true,
+    state.filters = {
+      gender: field(formData, "gender"),
+      ageMin,
+      ageMax,
+      city: field(formData, "city"),
+      sort: field(formData, "sort") || "default",
     };
+    state.page = 1;
 
-    saveLocalUsers([...getLocalUsers(), newUser]);
-    allUsers.push(newUser);
-  }
+    $("#filter-dialog").close();
+    renderUsersPanel();
+  });
+}
 
-  const wasEditing = Boolean(editingUser);
+function removeFilter(key) {
+  state.filters[key] = key === "sort" ? "default" : "";
+  state.page = 1;
+  renderUsersPanel();
+}
 
-  userDialog.close();
+function toggleAgeSort() {
+  state.filters.sort =
+    state.filters.sort === "age-asc" ? "age-desc" : "age-asc";
+  state.page = 1;
+  renderUsersPanel();
+}
 
-  renderCityOptions(
-    [
-      ...new Set(allUsers.map((user) => user.address?.city).filter(Boolean)),
-    ].sort(),
-  );
+/* =========================================================
+   COMMENTS
+   ========================================================= */
 
-  applyFilters({ keepPage: wasEditing });
-});
+function handleCommentAction(action, id) {
+  const comment = state.comments.find((item) => item.id === id);
+  if (!comment) return;
 
-/* -----------------------------
-   Table Event Delegation
------------------------------ */
-
-usersBody.addEventListener("click", (event) => {
-  const button = event.target.closest("button[data-action]");
-
-  if (!button) {
+  if (action === "approve") {
+    comment.status = "approved";
+    notify("نظر تأیید شد.");
+  } else if (action === "spam") {
+    comment.status = "spam";
+    notify("نظر به عنوان هرزنامه علامت خورد.");
+  } else if (action === "reply") {
+    state.replyId = id;
+    const form = $("#reply-form");
+    form.reset();
+    ui.setFormErrors(form, {});
+    $("#reply-to").textContent = `پاسخ به ${comment.name}: «${comment.text}»`;
+    openDialog($("#reply-dialog"));
+    return;
+  } else if (action === "delete") {
+    confirmAction({
+      title: "حذف نظر",
+      text: `نظر «${comment.name}» برای همیشه حذف می‌شود.`,
+      okLabel: "حذف نظر",
+      onConfirm: () => {
+        state.comments = state.comments.filter((item) => item.id !== id);
+        persist(STORAGE.comments, state.comments);
+        notify("نظر حذف شد.");
+        renderComments();
+        renderDashboard();
+      },
+    });
     return;
   }
 
-  const user = allUsers.find(
-    (item) => String(item.id) === String(button.dataset.id),
-  );
+  persist(STORAGE.comments, state.comments);
+  renderComments();
+  renderDashboard();
+}
 
-  if (!user) {
+function handleReplySubmit(event) {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+  const text = field(new FormData(form), "reply");
+
+  if (!text) {
+    ui.setFormErrors(form, { reply: "متن پاسخ را وارد کنید." });
     return;
   }
 
-  switch (button.dataset.action) {
-    case "view":
-      openDetails(user);
-      break;
-    case "edit":
-      openEdit(user);
-      break;
-    case "delete":
-      openDelete(user);
-      break;
-    case "restore":
-      deletedIds.delete(String(user.id));
-      saveDeletedIds();
-      applyFilters({ keepPage: true });
-      break;
-  }
-});
+  const comment = state.comments.find((item) => item.id === state.replyId);
+  if (!comment) return;
 
-/* -----------------------------
-   Detail Modal
------------------------------ */
+  comment.replies = [...(comment.replies || []), { text, date: todayFa() }];
+  if (comment.status === "pending") comment.status = "approved";
 
-function openDetails(user) {
-  selectedUser = user;
-
-  renderDetails(user);
-
-  detailDialog.showModal();
+  persist(STORAGE.comments, state.comments);
+  $("#reply-dialog").close();
+  notify("پاسخ ثبت شد.");
+  renderComments();
+  renderDashboard();
 }
 
-detailClose.addEventListener("click", () => detailDialog.close());
-detailClose2.addEventListener("click", () => detailDialog.close());
+/* =========================================================
+   POSTS
+   ========================================================= */
 
-/* -----------------------------
-   Edit User
------------------------------ */
+function openPostDialog(id = null) {
+  const form = $("#post-form");
+  const post = id ? state.posts.find((item) => item.id === id) : null;
+  if (id && !post) return;
 
-function openEdit(user) {
-  editingUser = user;
+  state.editingPostId = post ? post.id : null;
 
-  if (detailDialog.open) {
-    detailDialog.close();
+  form.reset();
+  ui.setFormErrors(form, {});
+  $("#post-dialog-title").textContent = post ? "ویرایش نوشته" : "افزودن نوشته";
+
+  if (post) {
+    form.elements.title.value = post.title;
+    form.elements.excerpt.value = post.excerpt || "";
+    form.elements.status.value = post.status;
   }
 
-  $("#dialog-title").textContent = "ویرایش کاربر";
-
-  clearFormErrors();
-
-  $("#f-first").value = user.firstName ?? "";
-  $("#f-last").value = user.lastName ?? "";
-  $("#f-email").value = user.email ?? "";
-  $("#f-age").value = user.age ?? "";
-  $("#f-city").value = user.address?.city ?? "";
-
-  const gender = $("#f-gender");
-
-  if (gender) {
-    gender.value = user.gender === "female" ? "female" : "male";
-  }
-
-  userDialog.showModal();
+  openDialog($("#post-dialog"));
 }
 
-detailEdit.addEventListener("click", () => {
-  if (selectedUser) {
-    openEdit(selectedUser);
-  }
-});
-
-/* -----------------------------
-   Delete
------------------------------ */
-
-function openDelete(user) {
-  deletingUser = user;
-
-  confirmText.textContent = `کاربر ${fullName(user)} از فهرست حذف می‌شود. ادامه می‌دهید؟`;
-
-  confirmDialog.showModal();
-}
-
-confirmCancel.addEventListener("click", () => confirmDialog.close());
-
-confirmOk.addEventListener("click", () => {
-  if (!deletingUser) {
-    return;
-  }
-
-  if (deletingUser.local) {
-    /* کاربر محلی: حذف کامل */
-    saveLocalUsers(
-      getLocalUsers().filter(
-        (user) => String(user.id) !== String(deletingUser.id),
-      ),
-    );
-
-    allUsers = allUsers.filter(
-      (user) => String(user.id) !== String(deletingUser.id),
-    );
+function savePost(data) {
+  if (state.editingPostId) {
+    const post = state.posts.find((item) => item.id === state.editingPostId);
+    if (post) Object.assign(post, data);
   } else {
-    /* کاربر سرور: می‌رود به تب «حذف‌شده» و با رفرش برنمی‌گردد */
-    deletedIds.add(String(deletingUser.id));
-    saveDeletedIds();
+    state.posts.unshift({ id: createId("post"), ...data });
   }
 
-  deletingUser = null;
+  persist(STORAGE.posts, state.posts);
+  renderPosts();
+  renderDashboard();
+}
 
-  confirmDialog.close();
+function handlePostSubmit(event) {
+  event.preventDefault();
 
-  applyFilters({ keepPage: true });
-});
+  const form = event.currentTarget;
+  const formData = new FormData(form);
+  const data = {
+    title: field(formData, "title"),
+    excerpt: field(formData, "excerpt"),
+    status: field(formData, "status") === "published" ? "published" : "draft",
+  };
 
-/* -----------------------------
-   اسلایدر مدیران
------------------------------ */
+  const titleError = validateTitle(data.title, "عنوان نوشته");
+  ui.setFormErrors(form, titleError ? { title: titleError } : {});
+  if (titleError) return;
 
-function initSlider() {
+  const editing = Boolean(state.editingPostId);
+  savePost(data);
+  state.editingPostId = null;
+  $("#post-dialog").close();
+  notify(editing ? "نوشته به‌روزرسانی شد." : "نوشته ذخیره شد.");
+}
+
+function handleQuickDraft(event) {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+  const formData = new FormData(form);
+  const title = field(formData, "title");
+
+  const error = validateTitle(title, "عنوان پیش‌نویس");
+  ui.setFormErrors(form, error ? { title: error } : {});
+  if (error) return;
+
+  state.editingPostId = null;
+  savePost({ title, excerpt: field(formData, "excerpt"), status: "draft" });
+  form.reset();
+  notify("پیش‌نویس ذخیره شد.");
+}
+
+function handlePostAction(action, id) {
+  const post = state.posts.find((item) => item.id === id);
+  if (!post) return;
+
+  if (action === "edit") {
+    openPostDialog(id);
+  } else if (action === "toggle") {
+    post.status = post.status === "published" ? "draft" : "published";
+    persist(STORAGE.posts, state.posts);
+    notify(
+      post.status === "published"
+        ? "نوشته منتشر شد."
+        : "نوشته به پیش‌نویس برگشت.",
+    );
+    renderPosts();
+    renderDashboard();
+  } else if (action === "delete") {
+    confirmAction({
+      title: "حذف نوشته",
+      text: `نوشته «${post.title}» برای همیشه حذف می‌شود.`,
+      okLabel: "حذف نوشته",
+      onConfirm: () => {
+        state.posts = state.posts.filter((item) => item.id !== id);
+        persist(STORAGE.posts, state.posts);
+        notify("نوشته حذف شد.");
+        renderPosts();
+        renderDashboard();
+      },
+    });
+  }
+}
+
+/* =========================================================
+   PAGES
+   ========================================================= */
+
+function openPageDialog(id = null) {
+  const form = $("#page-form");
+  const page = id ? state.pages.find((item) => item.id === id) : null;
+  if (id && !page) return;
+
+  state.editingPageId = page ? page.id : null;
+
+  form.reset();
+  ui.setFormErrors(form, {});
+  $("#page-dialog-title").textContent = page ? "ویرایش برگه" : "افزودن برگه";
+
+  if (page) {
+    form.elements.title.value = page.title;
+    form.elements.desc.value = page.desc || "";
+  }
+
+  openDialog($("#page-dialog"));
+}
+
+function handlePageSubmit(event) {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+  const formData = new FormData(form);
+  const data = {
+    title: field(formData, "title"),
+    desc: field(formData, "desc"),
+  };
+
+  const titleError = validateTitle(data.title, "عنوان برگه");
+  ui.setFormErrors(form, titleError ? { title: titleError } : {});
+  if (titleError) return;
+
+  const editing = Boolean(state.editingPageId);
+
+  if (editing) {
+    const page = state.pages.find((item) => item.id === state.editingPageId);
+    if (page) Object.assign(page, data);
+  } else {
+    state.pages.push({ id: createId("page"), ...data });
+  }
+
+  persist(STORAGE.pages, state.pages);
+  state.editingPageId = null;
+  $("#page-dialog").close();
+  notify(editing ? "برگه به‌روزرسانی شد." : "برگه اضافه شد.");
+  ui.renderPages(state.pages);
+  renderDashboard();
+}
+
+function handlePageAction(action, id) {
+  const page = state.pages.find((item) => item.id === id);
+  if (!page) return;
+
+  if (action === "edit") {
+    openPageDialog(id);
+  } else if (action === "delete") {
+    confirmAction({
+      title: "حذف برگه",
+      text: `برگه «${page.title}» برای همیشه حذف می‌شود.`,
+      okLabel: "حذف برگه",
+      onConfirm: () => {
+        state.pages = state.pages.filter((item) => item.id !== id);
+        persist(STORAGE.pages, state.pages);
+        notify("برگه حذف شد.");
+        ui.renderPages(state.pages);
+        renderDashboard();
+      },
+    });
+  }
+}
+
+/* =========================================================
+   MEDIA
+   ========================================================= */
+
+const MAX_MEDIA_SIZE = 10 * 1024 * 1024;
+
+function handleMediaSelected(event) {
+  const files = [...event.target.files];
+  let added = 0;
+
+  files.forEach((file) => {
+    if (file.size > MAX_MEDIA_SIZE) {
+      ui.toast(
+        `«${file.name}» بزرگ‌تر از ۱۰ مگابایت است و اضافه نشد.`,
+        "error",
+      );
+      return;
+    }
+
+    const item = { id: createId("media"), name: file.name, size: file.size };
+    if (file.type.startsWith("image/")) {
+      state.mediaPreviews.set(item.id, URL.createObjectURL(file));
+    }
+
+    state.media.unshift(item);
+    added++;
+  });
+
+  event.target.value = "";
+  if (!added) return;
+
+  persist(STORAGE.media, state.media);
+  notify(`${added.toLocaleString("fa-IR")} پرونده اضافه شد.`);
+  ui.renderMedia(state.media, state.mediaPreviews);
+}
+
+function handleMediaAction(action, id) {
+  const item = state.media.find((entry) => entry.id === id);
+  if (!item || action !== "delete") return;
+
+  confirmAction({
+    title: "حذف پرونده",
+    text: `پرونده «${item.name}» از کتابخانه حذف می‌شود.`,
+    okLabel: "حذف پرونده",
+    onConfirm: () => {
+      const url = state.mediaPreviews.get(id);
+      if (url) URL.revokeObjectURL(url);
+      state.mediaPreviews.delete(id);
+
+      state.media = state.media.filter((entry) => entry.id !== id);
+      persist(STORAGE.media, state.media);
+      notify("پرونده حذف شد.");
+      ui.renderMedia(state.media, state.mediaPreviews);
+    },
+  });
+}
+
+/* =========================================================
+   SETTINGS
+   ========================================================= */
+
+function applySettings() {
+  ui.setBrand(state.settings.siteTitle);
+  document.title = `${VIEW_TITLES[state.view]} ‹ ${state.settings.siteTitle}`;
+
+  $("#site-title").value = state.settings.siteTitle;
+  $("#items-per-page").value = String(state.settings.itemsPerPage);
+  $("#notifications").checked = Boolean(state.settings.notifications);
+}
+
+function handleSettingsSubmit(event) {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+  const siteTitle = $("#site-title").value.trim();
+
+  if (!siteTitle) {
+    ui.setFormErrors(form, { siteTitle: "عنوان سایت نمی‌تواند خالی باشد." });
+    return;
+  }
+
+  ui.setFormErrors(form, {});
+
+  state.settings = {
+    siteTitle,
+    itemsPerPage: Number($("#items-per-page").value) || 10,
+    notifications: $("#notifications").checked,
+  };
+
+  persist(STORAGE.settings, state.settings);
+  state.page = 1;
+  applySettings();
+  renderUsersPanel();
+  notify("تنظیمات ذخیره شد.");
+}
+
+function resetAllData() {
+  confirmAction({
+    title: "بازنشانی داده‌ها",
+    text: "همه‌ی کاربران محلی، ویرایش‌ها، نظرها، نوشته‌ها و تنظیمات ذخیره‌شده در این مرورگر پاک می‌شود. این کار قابل بازگشت نیست.",
+    okLabel: "پاک کردن همه‌چیز",
+    onConfirm: () => {
+      clearAllData();
+      location.reload();
+    },
+  });
+}
+
+/* =========================================================
+   CSV EXPORT
+   ========================================================= */
+
+function exportCsv() {
+  const csv = usersToCsv(activeUsers(state.users, state.deletedIds));
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "users.csv";
+  document.body.append(link);
+  link.click();
+  link.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  notify("فایل CSV دانلود شد.");
+}
+
+/* =========================================================
+   ADMIN SLIDER (سازگار با RTL)
+   ========================================================= */
+
+function setupAdminSlider() {
   const slider = $("#admin-slider");
+  const dots = $("#slider-dots");
   const prev = $("#slider-prev");
   const next = $("#slider-next");
-  const dots = document.querySelectorAll("#slider-dots .dot-i");
+  const slides = $$(".admin-slide", slider);
+  if (!slides.length) return;
 
-  if (!slider) {
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let current = 0;
+
+  function paint() {
+    dots.innerHTML = slides
+      .map(
+        (_, index) =>
+          `<button type="button" class="${index === current ? "active" : ""}" data-slide="${index}" aria-label="مدیر ${index + 1}"></button>`,
+      )
+      .join("");
+
+    prev.disabled = current === 0;
+    next.disabled = current === slides.length - 1;
+  }
+
+  function goTo(index) {
+    current = Math.min(Math.max(index, 0), slides.length - 1);
+    slides[current].scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      inline: "start",
+      block: "nearest",
+    });
+    paint();
+  }
+
+  // هنگام اسکرول با لمس، شاخص فعلی را همگام کن (در RTL لبه‌ی شروع = راست)
+  slider.addEventListener(
+    "scroll",
+    debounce(() => {
+      const edge = slider.getBoundingClientRect().right;
+      let best = 0;
+      let bestDistance = Infinity;
+
+      slides.forEach((slide, index) => {
+        const distance = Math.abs(slide.getBoundingClientRect().right - edge);
+        if (distance < bestDistance) {
+          best = index;
+          bestDistance = distance;
+        }
+      });
+
+      if (best !== current) {
+        current = best;
+        paint();
+      }
+    }, 80),
+    { passive: true },
+  );
+
+  prev.addEventListener("click", () => goTo(current - 1));
+  next.addEventListener("click", () => goTo(current + 1));
+  dots.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-slide]");
+    if (button) goTo(Number(button.dataset.slide));
+  });
+
+  paint();
+}
+
+/* =========================================================
+   GLOBAL EVENT DELEGATION
+   ========================================================= */
+
+function handleClick(event) {
+  const target = event.target;
+
+  // بستن منوی «جدید» هنگام کلیک بیرون از آن
+  const newMenu = $("#new-menu");
+  if (newMenu?.open && !target.closest("#new-menu")) newMenu.open = false;
+
+  const anchor = target.closest('a[href^="#"]');
+  if (anchor && handleAnchor(event, anchor)) return;
+
+  const close = target.closest("[data-close]");
+  if (close) {
+    close.closest("dialog")?.close();
     return;
   }
 
-  const step = () => {
-    const slide = slider.querySelector(".slide");
-    const gap = parseFloat(getComputedStyle(slider).columnGap) || 0;
+  const go = target.closest("[data-go]");
+  if (go) {
+    navigate(go.dataset.go);
+    return;
+  }
 
-    return slide.getBoundingClientRect().width + gap;
-  };
+  const open = target.closest("[data-open]");
+  if (open) {
+    if (newMenu) newMenu.open = false;
+    const kind = open.dataset.open;
+    if (kind === "user") openUserDialog();
+    if (kind === "post") openPostDialog();
+    if (kind === "page") openPageDialog();
+    if (kind === "media") $("#media-input").click();
+    return;
+  }
 
-  const direction = () =>
-    getComputedStyle(slider).direction === "rtl" ? -1 : 1;
+  const action = target.closest("[data-action]");
+  if (action) {
+    const { action: name, id } = action.dataset;
 
-  next.addEventListener("click", () =>
-    slider.scrollBy({ left: direction() * step() }),
+    if (name === "detail") openDetails(id);
+    if (name === "edit") openUserDialog(id);
+    if (name === "delete") requestDeleteUser(id);
+    if (name === "restore") restoreUser(id);
+    if (name === "refresh") loadData();
+    if (name === "export-csv") exportCsv();
+    if (name === "reset-data") resetAllData();
+    return;
+  }
+
+  const tab = target.closest("[data-tab]");
+  if (tab) {
+    state.tab = tab.dataset.tab;
+    state.page = 1;
+    $$("[data-tab]").forEach((item) =>
+      item.setAttribute("aria-selected", String(item === tab)),
+    );
+    renderUsersPanel();
+    return;
+  }
+
+  const commentFilter = target.closest("[data-comment-filter]");
+  if (commentFilter) {
+    state.commentFilter = commentFilter.dataset.commentFilter;
+    renderComments();
+    return;
+  }
+
+  const commentAction = target.closest("[data-comment-action]");
+  if (commentAction) {
+    handleCommentAction(
+      commentAction.dataset.commentAction,
+      commentAction.dataset.id,
+    );
+    return;
+  }
+
+  const postAction = target.closest("[data-post-action]");
+  if (postAction) {
+    handlePostAction(postAction.dataset.postAction, postAction.dataset.id);
+    return;
+  }
+
+  const pageAction = target.closest("[data-page-action]");
+  if (pageAction) {
+    handlePageAction(pageAction.dataset.pageAction, pageAction.dataset.id);
+    return;
+  }
+
+  const mediaAction = target.closest("[data-media-action]");
+  if (mediaAction) {
+    handleMediaAction(mediaAction.dataset.mediaAction, mediaAction.dataset.id);
+    return;
+  }
+
+  const pageButton = target.closest("[data-page]");
+  if (pageButton && !pageButton.disabled) {
+    state.page = Number(pageButton.dataset.page);
+    renderUsersPanel();
+    $("#users-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+
+  const recent = target.closest("[data-recent-search]");
+  if (recent) {
+    const value = recent.dataset.recentSearch;
+    $("#search-input").value = value;
+    ui.setSearchError("");
+    applySearch(value);
+    return;
+  }
+
+  if (target.closest("[data-clear-recent]")) {
+    state.recentSearches = [];
+    persist(STORAGE.recentSearches, state.recentSearches);
+    renderUsersPanel();
+    return;
+  }
+
+  const removeFilterButton = target.closest("[data-remove-filter]");
+  if (removeFilterButton) {
+    removeFilter(removeFilterButton.dataset.removeFilter);
+    return;
+  }
+
+  if (target.closest("[data-sort='age']")) toggleAgeSort();
+}
+
+/* =========================================================
+   SETUP
+   ========================================================= */
+
+function setupEvents() {
+  document.addEventListener("click", handleClick);
+
+  $("#menu-toggle").addEventListener("click", () =>
+    setMenu(!document.body.classList.contains("menu-open")),
   );
+  $("#backdrop").addEventListener("click", () => setMenu(false));
 
-  prev.addEventListener("click", () =>
-    slider.scrollBy({ left: -direction() * step() }),
-  );
-
-  slider.addEventListener("keydown", (event) => {
-    if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      slider.scrollBy({ left: -step() });
-    }
-
-    if (event.key === "ArrowRight") {
-      event.preventDefault();
-      slider.scrollBy({ left: step() });
-    }
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    setMenu(false);
+    const newMenu = $("#new-menu");
+    if (newMenu) newMenu.open = false;
   });
 
-  slider.addEventListener(
-    "scroll",
-    () => {
-      const index = Math.round(Math.abs(slider.scrollLeft) / step());
+  // کلیک روی پس‌زمینه‌ی مودال، آن را می‌بندد
+  $$("dialog").forEach((dialog) => {
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) dialog.close();
+    });
+  });
 
-      dots.forEach((dot, i) => dot.classList.toggle("is-on", i === index));
-    },
-    { passive: true },
+  $("#user-form").addEventListener("submit", handleUserSubmit);
+  $("#reply-form").addEventListener("submit", handleReplySubmit);
+  $("#post-form").addEventListener("submit", handlePostSubmit);
+  $("#page-form").addEventListener("submit", handlePageSubmit);
+  $("#quick-draft-form").addEventListener("submit", handleQuickDraft);
+  $("#settings-form").addEventListener("submit", handleSettingsSubmit);
+  $("#media-input").addEventListener("change", handleMediaSelected);
+
+  $("#detail-edit").addEventListener("click", () => {
+    const id = state.detailId;
+    $("#detail-dialog").close();
+    if (id) openUserDialog(id);
+  });
+
+  $("#confirm-ok").addEventListener("click", () => {
+    const action = state.confirmAction;
+    state.confirmAction = null;
+    $("#confirm-dialog").close();
+    action?.();
+  });
+
+  $("#retry-btn").addEventListener("click", loadData);
+
+  $("#post-search").addEventListener(
+    "input",
+    debounce((event) => {
+      state.postQuery = event.target.value;
+      renderPosts();
+    }, 200),
   );
-}
 
-function initViews() {
-  const navLinks = document.querySelectorAll("[data-nav]");
-  const sections = document.querySelectorAll("[data-view]");
+  $("#post-status").addEventListener("change", (event) => {
+    state.postStatus = event.target.value;
+    renderPosts();
+  });
 
-  function showView(name) {
-    sections.forEach((section) => {
-      section.hidden = section.dataset.view !== name;
-    });
+  window.addEventListener("hashchange", () => {
+    const hash = location.hash.slice(1);
 
-    navLinks.forEach((link) => {
-      const active = link.dataset.nav === name;
-
-      link.classList.toggle("is-active", active);
-
-      if (active) {
-        link.setAttribute("aria-current", "page");
-      } else {
-        link.removeAttribute("aria-current");
-      }
-    });
-
-    document.title =
-      name === "reports"
-        ? "گزارش‌ها | پنل مدیریت کاربران"
-        : "پنل مدیریت کاربران";
-  }
-
-  function applyHash() {
-    const hash = location.hash.replace("#", "");
-
-    if (hash === "reports") {
-      showView("reports");
-      window.scrollTo({ top: 0 });
-    } else if (hash === "users" || hash === "") {
-      showView("users");
-      window.scrollTo({ top: 0 });
+    if (VIEWS.includes(hash)) {
+      navigate(hash, { updateHash: false });
     } else if (hash === "admins") {
-      showView("users");
-      document.getElementById("admins")?.scrollIntoView();
+      navigate("users", { updateHash: false });
+      scrollToAdmins();
     }
-  }
-
-  window.addEventListener("hashchange", applyHash);
-
-  applyHash();
+  });
 }
 
-initViews();
-initSlider();
+async function init() {
+  applySettings();
+  setupEvents();
+  setupSearch();
+  setupFilter();
+  setupAdminSlider();
+
+  const hash = location.hash.slice(1);
+  navigate(VIEWS.includes(hash) ? hash : "dashboard", { updateHash: false });
+
+  await loadData();
+}
+
 init();
+const adminSlider = document.getElementById("admin-slider");
+
+if (adminSlider) {
+  setInterval(() => {
+    const maxScroll = adminSlider.scrollWidth - adminSlider.clientWidth;
+
+    if (adminSlider.scrollLeft <= -maxScroll + 5) {
+      adminSlider.scrollTo({
+        left: 0,
+        behavior: "smooth",
+      });
+    } else {
+      adminSlider.scrollBy({
+        left: -250,
+        behavior: "smooth",
+      });
+    }
+  }, 3000);
+}
+
+const darkModeBtn = document.getElementById("dark-mode-btn");
+const lightModeBtn = document.getElementById("light-mode-btn");
+const root = document.documentElement;
+
+function setTheme(theme) {
+  // تغییر تم سایت
+  root.dataset.theme = theme;
+
+  // ذخیره انتخاب کاربر
+  localStorage.setItem("admin-theme", theme);
+
+  // مشخص کردن دکمه فعال
+  darkModeBtn.classList.toggle("active", theme === "dark");
+  lightModeBtn.classList.toggle("active", theme === "light");
+
+  darkModeBtn.setAttribute("aria-pressed", String(theme === "dark"));
+
+  lightModeBtn.setAttribute("aria-pressed", String(theme === "light"));
+}
+
+// بارگذاری تم ذخیره‌شده؛ حالت پیش‌فرض دارک است
+const savedTheme = localStorage.getItem("admin-theme");
+setTheme(savedTheme === "light" ? "light" : "dark");
+
+// کلیک روی ماه
+darkModeBtn.addEventListener("click", () => {
+  setTheme("dark");
+});
+
+// کلیک روی خورشید
+lightModeBtn.addEventListener("click", () => {
+  setTheme("light");
+});

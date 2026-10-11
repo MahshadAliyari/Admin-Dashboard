@@ -1,17 +1,24 @@
-// limit=0 یعنی همه کاربران (۲۰۸ نفر)، نه فقط ۳۰ نفر پیش‌فرض
-const API_URL = "https://dummyjson.com/users?limit=0";
 
-/**
- * دریافت کاربران از API
- */
+const API_URL =
+  "https://mcp.httpstatus.com/dummy/users?count=10";
+
 export async function fetchUsers() {
-  const response = await fetch(API_URL);
+  try {
+    const response = await fetch(API_URL);
 
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`خطای سرور: ${response.status}`);
+    }
+
+    const users = await response.json();
+
+    if (!Array.isArray(users)) {
+      throw new Error("ساختار اطلاعات کاربران معتبر نیست.");
+    }
+
+    return users;
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
   }
-
-  const data = await response.json();
-
-  return data.users;
 }
