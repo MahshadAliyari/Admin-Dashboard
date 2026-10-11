@@ -812,8 +812,8 @@ svg.sprite {
 }
 
 .gender-chart svg {
-  width: 8rem;
-  height: 8rem;
+  width: 13rem;
+  height: 13rem;
 }
 
 .chart-legend {
@@ -2127,6 +2127,22 @@ footer {
   .welcome {
     padding: 1.5rem;
   }
+  
+.gender-chart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  transform: translateY(48px);
+}
+
+.age-chart {
+  display: flex;
+  align-items: stretch;
+  gap: 0.6rem;
+  height: 11rem;
+  transform: translateY(50px);
+}
 }
 
 /* =========================================================
@@ -2149,6 +2165,22 @@ footer {
   .metabox-wide {
     grid-column: auto;
   }
+  
+.gender-chart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  transform: translateY(48px);
+}
+
+.age-chart {
+  display: flex;
+  align-items: stretch;
+  gap: 0.6rem;
+  height: 11rem;
+  transform: translateY(50px);
+}
 }
 /* ================= THEME SETTINGS ================= */
 
