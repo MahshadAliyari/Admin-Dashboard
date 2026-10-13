@@ -3,7 +3,7 @@
 مینی‌اپ فاز ۴ (تمرین ۱۱) هلدینگ صحنه: یک پنل مدیریت فارسی (RTL) که کاربران را از یک API عمومی دریافت می‌کند و نوشته‌ها، برگه‌ها، نظرها و رسانه را به‌صورت محلی مدیریت می‌کند.
 بدون هیچ کتابخانه یا فریم‌ورکی؛ فقط HTML، CSS و JavaScript خام.
 
-- **نسخه آنلاین:** `https://your-username.github.io/your-repo/` 
+- **نسخه آنلاین:** `https://mahshadaliyari.github.io/Admin-Dashboard/` 
 - **مخزن:** `https://github.com/MahshadAliyari/Admin-Dashboard`
 
 ---
