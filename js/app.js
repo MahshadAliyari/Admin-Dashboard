@@ -613,16 +613,6 @@ function setupFilter() {
     });
   }
 
-  // پاک کردن فیلترها
-  if (resetFilterButton && filterDialog) {
-    resetFilterButton.addEventListener("click", () => {
-      state.filters = { ...DEFAULT_FILTERS };
-      state.page = 1;
-      filterDialog.close();
-      renderUsersPanel();
-    });
-  }
-
   // ثبت فیلترها
   if (form && filterDialog) {
     form.addEventListener("submit", (event) => {
@@ -1054,33 +1044,33 @@ function exportCsv() {
 /* =========================================================
    ADMIN SLIDER (سازگار با RTL)
    ========================================================= */
-
 function setupAdminSlider() {
   const slider = $("#admin-slider");
   const dots = $("#slider-dots");
   const prev = $("#slider-prev");
   const next = $("#slider-next");
-  const slides = $$(".admin-slide", slider);
-  if (!slides.length) return;
+  const groups = $$(".admin-group", slider);
+  if (!groups.length) return;
 
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let current = 0;
+  let timer = null;
 
   function paint() {
-    dots.innerHTML = slides
+    dots.innerHTML = groups
       .map(
-        (_, index) =>
-          `<button type="button" class="${index === current ? "active" : ""}" data-slide="${index}" aria-label="مدیر ${index + 1}"></button>`,
+        (
+          _,
+          i,
+        ) => `<button type="button" class="${i === current ? "active" : ""}"
+        data-slide="${i}" aria-label="صفحه ${i + 1}"></button>`,
       )
       .join("");
-
-    prev.disabled = current === 0;
-    next.disabled = current === slides.length - 1;
   }
 
   function goTo(index) {
-    current = Math.min(Math.max(index, 0), slides.length - 1);
-    slides[current].scrollIntoView({
+    current = (index + groups.length) % groups.length; // چرخشی
+    groups[current].scrollIntoView({
       behavior: reduceMotion ? "auto" : "smooth",
       inline: "start",
       block: "nearest",
@@ -1088,22 +1078,33 @@ function setupAdminSlider() {
     paint();
   }
 
-  // هنگام اسکرول با لمس، شاخص فعلی را همگام کن (در RTL لبه‌ی شروع = راست)
+  const stop = () => {
+    clearInterval(timer);
+    timer = null;
+  };
+  const start = () => {
+    if (reduceMotion || timer) return;
+    timer = setInterval(() => goTo(current + 1), 5000);
+  };
+  const restart = () => {
+    stop();
+    start();
+  };
+
+  // همگام‌سازی با اسکرول لمسی (در RTL لبه‌ی شروع = راست)
   slider.addEventListener(
     "scroll",
     debounce(() => {
       const edge = slider.getBoundingClientRect().right;
-      let best = 0;
-      let bestDistance = Infinity;
-
-      slides.forEach((slide, index) => {
-        const distance = Math.abs(slide.getBoundingClientRect().right - edge);
-        if (distance < bestDistance) {
-          best = index;
-          bestDistance = distance;
+      let best = 0,
+        bestDistance = Infinity;
+      groups.forEach((group, i) => {
+        const d = Math.abs(group.getBoundingClientRect().right - edge);
+        if (d < bestDistance) {
+          best = i;
+          bestDistance = d;
         }
       });
-
       if (best !== current) {
         current = best;
         paint();
@@ -1112,16 +1113,32 @@ function setupAdminSlider() {
     { passive: true },
   );
 
-  prev.addEventListener("click", () => goTo(current - 1));
-  next.addEventListener("click", () => goTo(current + 1));
-  dots.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-slide]");
-    if (button) goTo(Number(button.dataset.slide));
+  prev.addEventListener("click", () => {
+    goTo(current - 1);
+    restart();
+  });
+  next.addEventListener("click", () => {
+    goTo(current + 1);
+    restart();
+  });
+  dots.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-slide]");
+    if (b) {
+      goTo(Number(b.dataset.slide));
+      restart();
+    }
   });
 
-  paint();
-}
+  // توقف هنگام هاور، فوکوس یا مخفی بودن تب
+  ["mouseenter", "focusin"].forEach((t) => slider.addEventListener(t, stop));
+  ["mouseleave", "focusout"].forEach((t) => slider.addEventListener(t, start));
+  document.addEventListener("visibilitychange", () =>
+    document.hidden ? stop() : start(),
+  );
 
+  paint();
+  start();
+}
 /* =========================================================
    GLOBAL EVENT DELEGATION
    ========================================================= */
@@ -1257,6 +1274,15 @@ function handleClick(event) {
 function setupEvents() {
   document.addEventListener("click", handleClick);
 
+  const menuToggle = $("#menu-toggle");
+
+  if (menuToggle) {
+    menuToggle.addEventListener("click", () => {
+      const isOpen = document.body.classList.contains("menu-open");
+      setMenu(!isOpen);
+    });
+  }
+
   // باز کردن فیلتر کاربران
   const openFilterButton = $("#open-filter");
 
@@ -1358,24 +1384,6 @@ async function init() {
 
 init();
 const adminSlider = document.getElementById("admin-slider");
-
-if (adminSlider) {
-  setInterval(() => {
-    const maxScroll = adminSlider.scrollWidth - adminSlider.clientWidth;
-
-    if (adminSlider.scrollLeft <= -maxScroll + 5) {
-      adminSlider.scrollTo({
-        left: 0,
-        behavior: "smooth",
-      });
-    } else {
-      adminSlider.scrollBy({
-        left: -250,
-        behavior: "smooth",
-      });
-    }
-  }, 3000);
-}
 
 const darkModeBtn = document.getElementById("dark-mode-btn");
 const lightModeBtn = document.getElementById("light-mode-btn");

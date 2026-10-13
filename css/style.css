@@ -54,8 +54,14 @@
   display: none !important;
 }
 
+
+/* ---------- FONT & BASE ---------- */
+
 html {
+  font-size: 16px;
   scroll-padding-top: calc(var(--bar-h) + 1rem);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -63,10 +69,33 @@ body {
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
-  font-family: "Vazirmatn", sans-serif;
-  font-size: 1rem;
-  line-height: 1.7;
+
+  font-family: "Vazirmatn", Tahoma, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.8;
+
   overflow-x: hidden;
+}
+
+/* یکسان‌سازی فونت تمام اجزای رابط کاربری */
+
+button,
+input,
+select,
+textarea {
+  font-family: "Vazirmatn", Tahoma, sans-serif;
+  font-size: 1rem;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Vazirmatn", Tahoma, sans-serif;
+  line-height: 1.6;
 }
 
 body.menu-open {
@@ -92,13 +121,7 @@ ul {
   list-style: none;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
-  color: inherit;
-}
+
 
 button {
   cursor: pointer;
@@ -1905,7 +1928,7 @@ footer {
   gap: 0.25rem 1rem;
   padding: 0.75rem 0;
   border-top: 1px solid var(--border);
-  font-size: 1.4rem;
+  font-size: 1.3rem;
 }
 
 /* =========================================================
@@ -2605,8 +2628,174 @@ textarea {
 :root[data-theme="light"] footer {
   border-color: var(--border);
 }
-@media (min-width: 1024px) {
-  html {
-    font-size: 112.5%;
+
+
+/* =========================================
+   TYPOGRAPHY REFINEMENT
+   فقط تنظیم اندازه فونت‌ها
+========================================= */
+
+/* متن پایه */
+body {
+  font-size: 14px;
+}
+
+/* عنوان صفحات */
+.page-header h1 {
+  font-size: 24px;
+}
+
+.page-header p {
+  font-size: 13px;
+}
+
+/* خوش‌آمدگویی */
+.welcome h2 {
+  font-size: 22px;
+}
+
+.welcome p {
+  font-size: 14px;
+}
+
+/* آمار */
+.stat-label {
+  font-size: 13px;
+}
+
+.stat-value {
+  font-size: 25px;
+}
+
+/* کارت‌ها و نمودارها */
+.metabox-title,
+.chart-card h2 {
+  font-size: 17px;
+}
+
+.chart-label {
+  font-size: 13px;
+}
+
+.chart-empty {
+  font-size: 13px;
+}
+
+.age-value {
+  font-size: 14px;
+}
+
+/* فعالیت‌ها */
+.activity-title {
+  font-size: 14px;
+}
+
+.mini-list li {
+  font-size: 13px;
+}
+
+.mini-main small {
+  font-size: 12px;
+}
+
+.status-list div {
+  font-size: 13px;
+}
+
+/* فرم‌ها */
+.field label,
+.field-label,
+legend {
+  font-size: 13px;
+}
+
+input,
+select,
+textarea {
+  font-size: 14px;
+}
+
+/* جدول کاربران */
+#table-wrap td {
+  font-size: 13px;
+}
+
+#table-wrap td::before {
+  font-size: 12px;
+}
+
+#table-wrap th {
+  font-size: 13px;
+}
+
+.user-meta {
+  font-size: 12px;
+}
+
+/* گزارش‌ها */
+.report-row {
+  font-size: 13px;
+}
+
+.report-card h3 {
+  font-size: 13px;
+}
+
+.report-card > strong {
+  font-size: 24px;
+}
+
+/* تنظیمات */
+.danger-zone h2 {
+  font-size: 16px;
+}
+
+.danger-zone p {
+  font-size: 13px;
+}
+
+/* پنجره‌ها */
+.modal h2 {
+  font-size: 18px;
+}
+
+.detail-item dt {
+  font-size: 13px;
+}
+
+.detail-item dd {
+  font-size: 14px;
+}
+
+/* اعلان‌ها و فوتر */
+.toast {
+  font-size: 13px;
+}
+
+footer {
+  font-size: 13px;
+}
+
+.footer-bottom {
+  font-size: 12px;
+}
+
+/* موبایل: فقط اصلاح اندازه فونت */
+@media (max-width: 39.99rem) {
+  .page-header h1 {
+    font-size: 21px;
+  }
+
+  .welcome h2 {
+    font-size: 20px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+  }
+
+  .chart-card h2,
+  .metabox-title {
+    font-size: 16px;
   }
 }

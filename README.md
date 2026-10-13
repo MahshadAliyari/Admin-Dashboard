@@ -4,7 +4,7 @@
 بدون هیچ کتابخانه یا فریم‌ورکی؛ فقط HTML، CSS و JavaScript خام.
 
 - **نسخه آنلاین:** `https://your-username.github.io/your-repo/` 
-- **مخزن:** `https://github.com/your-username/your-repo`
+- **مخزن:** `https://github.com/MahshadAliyari/Admin-Dashboard`
 
 ---
 
