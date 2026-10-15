@@ -61,9 +61,9 @@ export function toast(message, type = "success") {
 }
 
 const API_STATUS = {
-  loading: { text: "در حال اتصال به DummyJSON...", className: "badge-warning" },
-  ok: { text: "اتصال به DummyJSON برقرار است", className: "badge-success" },
-  error: { text: "اتصال به DummyJSON برقرار نیست", className: "badge-danger" },
+  loading: { text: "در حال اتصال به Dummy...", className: "badge-warning" },
+  ok: { text: "اتصال به Dummy برقرار است", className: "badge-success" },
+  error: { text: "اتصال به Dummy برقرار نیست", className: "badge-danger" },
 };
 
 export function setApiStatus(status) {
